@@ -1,42 +1,44 @@
 const express = require("express");
-const pool = require("./config/db.js");
-const swaggerUi = require("swagger-ui-express");
-const swaggerJSDoc = require("swagger-jsdoc");
+const setupSwagger = require("./config/swagger.js");
+const passport = require("./config/passport.js");
+const session = require("express-session");
+require('dotenv').config();
+const cors = require("cors");
 
 const app = express();
+app.use(cors({
+  origin: "*",
+  credentials: true,
+}));
+
+
 
 app.use(express.json());
 
-// Swagger setup
-const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "SWD Backend API",
-      version: "1.0.0",
-      description: "RESTful API docs for testing",
-    },
-    servers: [
-      {
-        url: "http://localhost:3000",
-      },
-    ],
-  },
-  apis: [
-    "./routes/*.js",
-  ],
-};
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: true,
+}));
 
-// Redirect root to Swagger UI
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Setup Swagger
+setupSwagger(app);
+
+// Mount API routes
+app.use("/api/v1/auth", require("./routes/auth.route"));
+
+// Root route for convenience
 app.get("/", (req, res) => {
-  res.redirect("/api-docs");
+  return res.redirect("/api-docs");
 });
 
 
-// Mount API routes
-app.use("/api/items", require("./routes/items.route"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+});
