@@ -2,7 +2,8 @@ const express = require("express");
 const setupSwagger = require("./config/swagger.js");
 const passport = require("./config/passport.js");
 const session = require("express-session");
-require('dotenv').config();
+require('dotenv').config({ debug: false });
+
 const cors = require("cors");
 
 const app = express();
@@ -37,7 +38,7 @@ app.get("/", (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 

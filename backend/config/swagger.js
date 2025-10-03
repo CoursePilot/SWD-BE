@@ -11,9 +11,19 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter JWT token (without 'Bearer ' prefix)"
+        }
+      }
+    }
   },
   apis: ["./routes/*.js"], // Đường dẫn tới các file route
 };
