@@ -31,6 +31,10 @@ setupSwagger(app);
 
 // Mount API routes
 app.use("/api/v1/auth", require("./routes/auth.route"));
+app.use("/api/v1/centers", require("./routes/center.route"));
+app.use("/api/v1/users", require("./routes/user.route"));
+app.use("/api/v1/plans", require("./routes/plan.route"));
+app.use("/api/v1/subscriptions", require("./routes/subscription.route"));
 
 // Root route for convenience
 app.get("/", (req, res) => {

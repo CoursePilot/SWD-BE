@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const { register, login, requestEmailOtp, verifyEmailOtp, getUserById, updateProfile, verifyToken: verifyTokenController, getProfile } = require("../controllers/auth.controller");
+const { register, login, requestEmailOtp, verifyEmailOtp, getUserById, updateProfile, getProfile, googleMobileLogin } = require("../controllers/auth.controller");
 const { loginValidation, registerValidation, requestOtpValidation, verifyOtpValidation, updateProfileValidation } = require("../middlewares/auth.validator");
 const { auth, requireEmailVerified, isAdmin, isEmployee, isAdminOrEmployee } = require("../middlewares/auth.middleware");
 const { upload, handleMulterError } = require("../middlewares/upload.middleware");
@@ -22,6 +22,63 @@ require("dotenv").config();
 router.get("/google", passport.authenticate("google", { 
   scope: ["profile", "email"] 
 }));
+
+/**
+ * @swagger
+ * /api/v1/auth/google-mobile:
+ *   post:
+ *     summary: Đăng nhập Google cho Android App
+ *     description: Android app gửi Google ID token để đăng nhập (không dùng redirect)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: Google ID token từ Android app
+ *             required:
+ *               - idToken
+ *     responses:
+ *       200:
+ *         description: Đăng nhập thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     googleId:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     avatarUrl:
+ *                       type: string
+ *                     role:
+ *                       type: integer
+ *                     emailVerified:
+ *                       type: boolean
+ *       400:
+ *         description: Missing or invalid Google ID token
+ *       401:
+ *         description: Invalid Google ID token or account locked
+ */
+router.post("/google-mobile", googleMobileLogin);
 
 /**
  * @swagger
@@ -319,63 +376,10 @@ router.get("/user/:id", getUserById);
  */
 router.put("/profile", auth, requireEmailVerified, upload.fields([{ name: "avatar", maxCount: 1 }]), handleMulterError, updateProfileValidation, updateProfile);
 
-/**
- * @swagger
- * /api/v1/auth/verify-token:
- *   post:
- *     summary: Xác thực JWT token
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *                 description: JWT token cần xác thực
- *             required:
- *               - token
- *     responses:
- *       200:
- *         description: Token hợp lệ
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 valid:
- *                   type: boolean
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     name:
- *                       type: string
- *                     phone:
- *                       type: string
- *                     avatarUrl:
- *                       type: string
- *                     role:
- *                       type: integer
- *                     emailVerified:
- *                       type: boolean
- *       400:
- *         description: Token không được cung cấp
- *       401:
- *         description: Token không hợp lệ hoặc đã hết hạn
- */
-router.post("/verify-token", verifyTokenController);
 
 /**
  * @swagger
- * /api/v1/auth/me:
+ * /api/v1/auth/profile:
  *   get:
  *     summary: Lấy thông tin profile của user hiện tại
  *     tags: [Authentication]
@@ -413,6 +417,6 @@ router.post("/verify-token", verifyTokenController);
  *       404:
  *         description: User không tìm thấy
  */
-router.get("/me", auth, getProfile);
+router.get("/profile", auth, getProfile);
 
 module.exports = router;

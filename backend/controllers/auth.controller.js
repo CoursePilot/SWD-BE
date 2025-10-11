@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const { sendVerificationEmail, sendEmailOtp } = require("../services/emailService");
 const { v4: uuidv4 } = require("uuid");
+const { OAuth2Client } = require("google-auth-library");
 
 const googleLogin = passport.authenticate("google", { 
   scope: ["profile", "email"] 
@@ -26,16 +27,100 @@ const googleCallback = [
 
 
 
+// Google Mobile Login cho Android - verify ID token
+async function googleMobileLogin(req, res) {
+  try {
+    const { idToken } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ error: "Google ID token is required" });
+    }
+
+    // Verify Google ID token bằng Android Client ID
+    const client = new OAuth2Client(process.env.GG_CLIENT_ID_ANDROID);
+    const ticket = await client.verifyIdToken({
+      idToken: idToken,
+      audience: process.env.GG_CLIENT_ID_ANDROID,
+    });
+
+    const payload = ticket.getPayload();
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name;
+    const avatarUrl = payload.picture;
+
+    // Check if user exists by Google ID
+    let user = await User.findByGoogleId(googleId);
+
+    // If not found, check by email to prevent duplicates
+    if (!user && email) {
+      const existingByEmail = await User.findByEmail(email);
+      if (existingByEmail) {
+        return res.status(400).json({ 
+          error: "Email is already registered by another account" 
+        });
+      }
+    }
+
+    // Create new user if not exists
+    if (!user) {
+      const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
+      user = { id: newId, googleId, email, name, phone: null, avatarUrl };
+    } else if (avatarUrl && user.avatarUrl !== avatarUrl) {
+      // Update avatar if changed
+      await User.updateAvatar(user.id, avatarUrl);
+      user.avatarUrl = avatarUrl;
+    }
+
+    // Check if user is deleted
+    if (user && user.isDeleted) {
+      return res.status(401).json({ error: "Tài khoản đã bị khóa/xóa" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        role: user.role,
+        googleId: user.googleId 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    return res.status(200).json({
+      message: "Đăng nhập Google thành công",
+      token,
+      user: {
+        id: user.id,
+        googleId: user.googleId,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || null,
+        avatarUrl: user.avatarUrl || null,
+        role: user.role,
+        emailVerified: user.emailVerified,
+      }
+    });
+
+  } catch (error) {
+    console.error("Google mobile login error:", error);
+    return res.status(401).json({ 
+      error: "Invalid Google ID token" 
+    });
+  }
+}
+
 module.exports = {
   googleLogin,
   googleCallback,
+  googleMobileLogin,
   register,
   login,
   requestEmailOtp,
   verifyEmailOtp,
   getUserById,
   updateProfile,
-  verifyToken,
   getProfile,
 };
 
@@ -370,65 +455,6 @@ async function updateProfile(req, res) {
   }
 }
 
-// Verify JWT token
-async function verifyToken(req, res) {
-  try {
-    const { token } = req.body;
-    
-    if (!token) {
-      return res.status(400).json({ error: "Token is required" });
-    }
-
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Get user from database
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ 
-        error: "Invalid token - user not found",
-        valid: false 
-      });
-    }
-
-    if (user.isDeleted) {
-      return res.status(401).json({ 
-        error: "Invalid token - user account is disabled",
-        valid: false 
-      });
-    }
-
-    return res.status(200).json({
-      message: "Token is valid",
-      valid: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone || null,
-        avatarUrl: user.avatarUrl || null,
-        role: user.role,
-        emailVerified: user.emailVerified,
-      }
-    });
-
-  } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        error: "Invalid token",
-        valid: false 
-      });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        error: "Token expired",
-        valid: false 
-      });
-    }
-    console.error("Verify token error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
 
 // Get current user profile from token
 async function getProfile(req, res) {
