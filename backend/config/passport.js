@@ -3,7 +3,8 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 require("dotenv").config();
 const User = require("../models/user.model");
 
-const serverOrigin = process.env.SERVER_ORIGIN || "http://localhost:5000";
+const serverOrigin = process.env.SERVER_ORIGIN || "https://studyportal.up.railway.app";
+
 
 passport.use(
   new GoogleStrategy(
