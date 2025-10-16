@@ -2,7 +2,8 @@ const express = require("express");
 const setupSwagger = require("./config/swagger.js");
 const passport = require("./config/passport.js");
 const session = require("express-session");
-require('dotenv').config();
+require('dotenv').config({ debug: false });
+
 const cors = require("cors");
 
 const app = express();
@@ -30,6 +31,14 @@ setupSwagger(app);
 
 // Mount API routes
 app.use("/api/v1/auth", require("./routes/auth.route"));
+app.use("/api/v1/centers", require("./routes/center.route"));
+app.use("/api/v1/users", require("./routes/user.route"));
+app.use("/api/v1/plans", require("./routes/plan.route"));
+app.use("/api/v1/subscriptions", require("./routes/subscription.route"));
+app.use("/api/v1/courses", require("./routes/course.route"));
+app.use("/api/v1/categories", require("./routes/category.route"));
+app.use("/api/v1/schedules", require("./routes/schedule.route"));
+app.use("/api/v1/follows", require("./routes/follow.route"));
 
 // Root route for convenience
 app.get("/", (req, res) => {
@@ -37,7 +46,7 @@ app.get("/", (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 

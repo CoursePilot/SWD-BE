@@ -1,5 +1,4 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || '',
@@ -7,6 +6,7 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'studyportal',
     port: process.env.DB_PORT || 40593,
+    timezone: '+07:00' // Giờ VN
    
 });
 

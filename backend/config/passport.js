@@ -34,11 +34,16 @@ passport.use(
         // 3) Create new user if not exists
         if (!user) {
           const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
-          user = { id: newId, googleId, email, name, avatarUrl };
+          user = { id: newId, googleId, email, name, phone: null, avatarUrl };
         } else if (avatarUrl && user.avatarUrl !== avatarUrl) {
           // 4) Update avatar if changed
           await User.updateAvatar(user.id, avatarUrl);
           user.avatarUrl = avatarUrl;
+        }
+
+        // Block deleted users just in case a stale record slipped through
+        if (user && user.isDeleted) {
+          return done(null, false, { message: "Tài khoản đã bị khóa/xóa" });
         }
 
         return done(null, user);
@@ -48,6 +53,7 @@ passport.use(
     }
   )
 );
+
 
 passport.serializeUser((user, done) => {
   done(null, user.id);

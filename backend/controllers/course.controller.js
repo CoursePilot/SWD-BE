@@ -1,0 +1,321 @@
+const Course = require("../models/course.model");
+const Center = require("../models/center.model");
+const { validationResult } = require("express-validator");
+
+module.exports = {
+  createCourse,
+  getAllCourses,
+  getCourseById,
+  updateCourse,
+  deleteCourse,
+  getCoursesByCenter,
+  getMyCourses
+};
+
+// Tạo course mới
+async function createCourse(req, res) {
+  try {
+    // Kiểm tra validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: "Dữ liệu không hợp lệ",
+        details: errors.array()
+      });
+    }
+
+    const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
+
+    // Kiểm tra xem center có tồn tại không
+    const center = await Center.findById(centerId);
+    if (!center) {
+      return res.status(404).json({
+        error: "Trung tâm không tồn tại"
+      });
+    }
+
+    const courseId = await Course.create({
+      centerId,
+      categoryId,
+      title,
+      summary,
+      content,
+      priceMin,
+      priceMax,
+      modality,
+      status: status || 'draft'
+    });
+
+    const course = await Course.findById(courseId);
+
+    res.status(201).json({
+      message: "Tạo khóa học thành công",
+      course
+    });
+
+  } catch (error) {
+    console.error("Create course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi tạo khóa học"
+    });
+  }
+}
+
+// Lấy tất cả courses với filter và pagination
+async function getAllCourses(req, res) {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      centerId,
+      categoryId,
+      status,
+      modality,
+      search
+    } = req.query;
+
+    const result = await Course.findAll({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      centerId,
+      categoryId,
+      status,
+      modality,
+      search
+    });
+
+    res.status(200).json({
+      message: "Lấy danh sách khóa học thành công",
+      ...result
+    });
+
+  } catch (error) {
+    console.error("Get all courses error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách khóa học"
+    });
+  }
+}
+
+// Lấy course theo ID
+async function getCourseById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        error: "Khóa học không tồn tại"
+      });
+    }
+
+    res.status(200).json({
+      message: "Lấy thông tin khóa học thành công",
+      course
+    });
+
+  } catch (error) {
+    console.error("Get course by ID error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy thông tin khóa học"
+    });
+  }
+}
+
+// Cập nhật course
+async function updateCourse(req, res) {
+  try {
+    // Kiểm tra validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: "Dữ liệu không hợp lệ",
+        details: errors.array()
+      });
+    }
+
+    const { id } = req.params;
+    const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
+    const userId = req.user.id;
+
+    // Kiểm tra course tồn tại
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        error: "Khóa học không tồn tại"
+      });
+    }
+
+    // Kiểm tra quyền cập nhật
+    const center = await Center.findById(course.centerId);
+    if (req.user.role !== 3 && center.userId !== userId) {
+      return res.status(403).json({
+        error: "Bạn không có quyền cập nhật khóa học này"
+      });
+    }
+
+    // Nếu thay đổi centerId, kiểm tra center mới
+    if (centerId && centerId !== course.centerId) {
+      const newCenter = await Center.findById(centerId);
+      if (!newCenter) {
+        return res.status(404).json({
+          error: "Trung tâm mới không tồn tại"
+        });
+      }
+
+      if (req.user.role !== 3 && newCenter.userId !== userId) {
+        return res.status(403).json({
+          error: "Bạn không có quyền chuyển khóa học sang trung tâm này"
+        });
+      }
+    }
+
+    const updated = await Course.updateById(id, {
+      centerId,
+      categoryId,
+      title,
+      summary,
+      content,
+      priceMin,
+      priceMax,
+      modality,
+      status
+    });
+
+    if (!updated) {
+      return res.status(400).json({
+        error: "Cập nhật khóa học thất bại"
+      });
+    }
+
+    const updatedCourse = await Course.findById(id);
+
+    res.status(200).json({
+      message: "Cập nhật khóa học thành công",
+      course: updatedCourse
+    });
+
+  } catch (error) {
+    console.error("Update course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi cập nhật khóa học"
+    });
+  }
+}
+
+// Xóa course
+async function deleteCourse(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Kiểm tra course tồn tại
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        error: "Khóa học không tồn tại"
+      });
+    }
+
+    // Kiểm tra quyền xóa
+    const center = await Center.findById(course.centerId);
+    if (req.user.role !== 3 && center.userId !== userId) {
+      return res.status(403).json({
+        error: "Bạn không có quyền xóa khóa học này"
+      });
+    }
+
+    const deleted = await Course.deleteById(id);
+    if (!deleted) {
+      return res.status(400).json({
+        error: "Xóa khóa học thất bại"
+      });
+    }
+
+    res.status(200).json({
+      message: "Xóa khóa học thành công"
+    });
+
+  } catch (error) {
+    console.error("Delete course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi xóa khóa học"
+    });
+  }
+}
+
+// Lấy courses theo center ID
+async function getCoursesByCenter(req, res) {
+  try {
+    const { centerId } = req.params;
+    const { page = 1, limit = 10, status } = req.query;
+
+    // Kiểm tra center tồn tại
+    const center = await Center.findById(centerId);
+    if (!center) {
+      return res.status(404).json({
+        error: "Trung tâm không tồn tại"
+      });
+    }
+
+    const result = await Course.findByCenterId(centerId, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status
+    });
+
+    res.status(200).json({
+      message: "Lấy danh sách khóa học của trung tâm thành công",
+      center: {
+        id: center.id,
+        name: center.name,
+        logoUrl: center.logoUrl
+      },
+      ...result
+    });
+
+  } catch (error) {
+    console.error("Get courses by center error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách khóa học"
+    });
+  }
+}
+
+// Lấy courses của center mà user sở hữu
+async function getMyCourses(req, res) {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 10, status } = req.query;
+
+    // Tìm center của user
+    const center = await Center.findByUserId(userId);
+    if (!center) {
+      return res.status(404).json({
+        error: "Bạn chưa có trung tâm nào"
+      });
+    }
+
+    const result = await Course.findByCenterId(center.id, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status
+    });
+
+    res.status(200).json({
+      message: "Lấy danh sách khóa học của tôi thành công",
+      center: {
+        id: center.id,
+        name: center.name,
+        logoUrl: center.logoUrl
+      },
+      ...result
+    });
+
+  } catch (error) {
+    console.error("Get my courses error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách khóa học"
+    });
+  }
+}
