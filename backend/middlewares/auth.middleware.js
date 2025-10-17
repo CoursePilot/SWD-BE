@@ -56,21 +56,23 @@ const requireEmailVerified = (req, res, next) => {
 
 // Role-based access control
 const isAdmin = (req, res, next) => {
-  if (req.user && (req.user.role === 3 || req.user.role === "admin")) {
+  if (req.user && (req.user.role === 3 || req.user.role?.toLowerCase() === "admin")) {
     return next();
   }
   return res.status(403).json({ error: "Access denied. Admins only." });
 };
 
 const isEmployee = (req, res, next) => {
-  if (req.user && (req.user.role === 2 || req.user.role === "employee")) {
+  if (req.user && (req.user.role === 2 || req.user.role?.toLowerCase() === "center")) {ter
     return next();
   }
   return res.status(403).json({ error: "Access denied. Employees only." });
 };
 
 const isAdminOrEmployee = (req, res, next) => {
-  if (req.user && (req.user.role === 2 || req.user.role === 3)) {
+  const role = req.user?.role;
+  const roleLower = typeof role === 'string' ? role.toLowerCase() : null;
+  if (req.user && (role === 2 || role === 3 || roleLower === "admin" || roleLower === "employee")) {
     return next();
   }
   return res.status(403).json({ error: "Forbidden: Admin or Employee only" });

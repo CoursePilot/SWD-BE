@@ -1,30 +1,10 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-function createTransport() {
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: String(process.env.SMTP_SECURE || 'false') === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-  });
-}
+// Initialize a single Resend client instance for reuse
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendVerificationEmail(toEmail, verifyUrl) {
-  const transporter = createTransport();
-  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const fromEmail = process.env.EMAIL_FROM;
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
@@ -35,12 +15,22 @@ async function sendVerificationEmail(toEmail, verifyUrl) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: fromEmail,
-    to: toEmail,
-    subject: 'Xác minh email',
-    html,
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [toEmail],
+      subject: 'Xác minh email',
+      html,
+    });
+    if (error) {
+      console.error('[Resend] Verification email failed:', { to: toEmail, error });
+      throw error;
+    }
+    console.log('[Resend] Verification email sent:', { to: toEmail, id: data?.id, data });
+  } catch (error) {
+    console.error('[Resend] Verification email failed (exception):', { to: toEmail, error: error?.message || error });
+    throw error;
+  }
 }
 
 module.exports = {
@@ -49,8 +39,7 @@ module.exports = {
 };
 
 async function sendEmailOtp(toEmail, code) {
-  const transporter = createTransport();
-  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const fromEmail = process.env.EMAIL_FROM;
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
@@ -60,12 +49,22 @@ async function sendEmailOtp(toEmail, code) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: fromEmail,
-    to: toEmail,
-    subject: 'Mã xác thực email (OTP)',
-    html,
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [toEmail],
+      subject: 'Mã xác thực email (OTP)',
+      html,
+    });
+    if (error) {
+      console.error('[Resend] OTP email failed:', { to: toEmail, error });
+      throw error;
+    }
+    console.log('[Resend] OTP email sent:', { to: toEmail, id: data?.id, data });
+  } catch (error) {
+    console.error('[Resend] OTP email failed (exception):', { to: toEmail, error: error?.message || error });
+    throw error;
+  }
 }
 
 
