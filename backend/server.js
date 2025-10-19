@@ -1,20 +1,36 @@
+// ==========================================
+// FILE: server.js
+// ==========================================
 const express = require("express");
-const setupSwagger = require("./config/swagger.js");
-const passport = require("./config/passport.js");
+const cors = require("cors");
 const session = require("express-session");
+const passport = require("./config/passport.js");
+const setupSwagger = require("./config/swagger.js");
 require('dotenv').config({ debug: false });
 
-const cors = require("cors");
+// Core Routes
+const authRoutes = require("./routes/auth.route");
+const centerRoutes = require("./routes/center.route");
+const userRoutes = require("./routes/user.route");
+const planRoutes = require("./routes/plan.route");
+const subscriptionRoutes = require("./routes/subscription.route");
+
+// 🧩 Chatbot RAG Routes (bổ sung)
+const chatRoutes = require("./routes/chat.route");
+const knowledgeRoutes = require("./routes/knowledge.route");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ==========================================
+// 🧩 Middleware
+// ==========================================
 app.use(cors({
   origin: "*",
   credentials: true,
 }));
-
-
-
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Session middleware
 app.use(session({
@@ -23,27 +39,72 @@ app.use(session({
   saveUninitialized: true,
 }));
 
+// Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Setup Swagger
 setupSwagger(app);
 
-// Mount API routes
-app.use("/api/v1/auth", require("./routes/auth.route"));
-app.use("/api/v1/centers", require("./routes/center.route"));
-app.use("/api/v1/users", require("./routes/user.route"));
-app.use("/api/v1/plans", require("./routes/plan.route"));
-app.use("/api/v1/subscriptions", require("./routes/subscription.route"));
+// ✅ Logging middleware (thêm)
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} | ${req.method} ${req.originalUrl}`);
+  next();
+});
 
-// Root route for convenience
+// ==========================================
+// 🧠 Mount API Routes
+// ==========================================
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/centers", centerRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/plans", planRoutes);
+app.use("/api/v1/subscriptions", subscriptionRoutes);
+
+// 🧩 Bổ sung Chatbot RAG routes
+app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/knowledge", knowledgeRoutes);
+
+// ==========================================
+// ✅ Health Check (thêm)
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "Unified API (Core + Chatbot RAG)",
+    timestamp: new Date().toISOString(),
+    database: "MySQL + Supabase Vector",
+    ai_service: "Google Gemini",
+    gemini: process.env.GEMINI_API_KEY ? "✅ Configured" : "❌ Missing",
+  });
+});
+
+// Root route
 app.get("/", (req, res) => {
   return res.redirect("/api-docs");
 });
 
+// ==========================================
+// ⚠️ 404 & Error Handling (thêm)
+// ==========================================
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: "Endpoint không tồn tại",
+  });
+});
 
-const PORT = process.env.PORT || 3000;
+app.use((err, req, res, next) => {
+  console.error("❌ Server Error:", err.stack);
+  res.status(500).json({
+    success: false,
+    error: "Có lỗi xảy ra trên server",
+  });
+});
+
+// ==========================================
+// 🚀 Start Server
+// ==========================================
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📘 Swagger docs: http://localhost:${PORT}/api-docs`);
 });
