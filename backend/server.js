@@ -19,6 +19,12 @@ const subscriptionRoutes = require("./routes/subscription.route");
 const chatRoutes = require("./routes/chat.route");
 const knowledgeRoutes = require("./routes/knowledge.route");
 
+// Additional Routes
+const courseRoutes = require("./routes/course.route");
+const categoryRoutes = require("./routes/category.route");
+const scheduleRoutes = require("./routes/schedule.route");
+const followRoutes = require("./routes/follow.route");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -64,6 +70,12 @@ app.use("/api/v1/subscriptions", subscriptionRoutes);
 // 🧩 Bổ sung Chatbot RAG routes
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/knowledge", knowledgeRoutes);
+
+// Additional API routes
+app.use("/api/v1/courses", courseRoutes);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/schedules", scheduleRoutes);
+app.use("/api/v1/follows", followRoutes);
 
 // ==========================================
 // ✅ Health Check (thêm)
