@@ -7,8 +7,8 @@ const MOMO_CONFIG = {
   accessKey: process.env.MOMO_ACCESS_KEY || '',
   secretKey: process.env.MOMO_SECRET_KEY || '',
   endpoint: process.env.MOMO_ENDPOINT || 'https://test-payment.momo.vn/v2/gateway/api/create',
-  redirectUrl: process.env.MOMO_REDIRECT_URL || 'http://localhost:3000/api/v1/payments/momo/redirect',
-  ipnUrl: process.env.MOMO_IPN_URL || 'http://localhost:3000/api/v1/payments/momo/callback',
+  redirectUrl: process.env.MOMO_REDIRECT_URL || 'https://studyportal.up.railway.app/api/v1/payments/momo/redirect',
+  ipnUrl: process.env.MOMO_IPN_URL || 'https://studyportal.up.railway.app/api/v1/payments/momo/callback',
   requestType: 'payWithATM',
   lang: 'vi'
 };
