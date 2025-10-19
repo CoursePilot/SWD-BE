@@ -88,21 +88,21 @@ async function findById(id) {
   return rows[0] || null;
 }
 
-async function create({ centerId, planId, startAt, endAt, autoRenew = 0 }) {
-  const id = uuidv4();
+async function create({ id, centerId, planId, startAt, endAt, status = 'active', autoRenew = 0 }) {
+  const subscriptionId = id || uuidv4();
   await db.query(
     `INSERT INTO subscriptions (
-      id, center_id, plan_id, start_at, end_at, lead_used, post_used, status, is_deleted, auto_renew, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 0, 0, 'active', 0, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
-    [id, centerId, planId, startAt, endAt, autoRenew]
+      id, center_id, plan_id, start_at, end_at, lead_used, post_used, status, is_deleted, auto_renew
+    ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, 0, ?)`,
+    [subscriptionId, centerId, planId, startAt, endAt, status, autoRenew]
   );
-  return id;
+  return subscriptionId;
 }
 
 async function cancel(id, reason) {
   await db.query(
     `UPDATE subscriptions 
-     SET status = 'cancelled', reason_cancel = ?, cancelled_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+     SET status = 'cancelled', reason_cancel = ?, cancelled_at = UTC_TIMESTAMP()
      WHERE id = ? AND is_deleted = 0`,
     [reason || null, id]
   );
@@ -111,7 +111,7 @@ async function cancel(id, reason) {
 async function renew(id, { startAt, endAt }) {
   await db.query(
     `UPDATE subscriptions 
-     SET start_at = ?, end_at = ?, status = 'active', lead_used = 0, post_used = 0, cancelled_at = NULL, reason_cancel = NULL, updated_at = UTC_TIMESTAMP()
+     SET start_at = ?, end_at = ?, status = 'active', lead_used = 0, post_used = 0, cancelled_at = NULL, reason_cancel = NULL
      WHERE id = ? AND is_deleted = 0`,
     [startAt, endAt, id]
   );
@@ -119,9 +119,20 @@ async function renew(id, { startAt, endAt }) {
 
 async function deleteSubscription(id) {
   await db.query(
-    `UPDATE subscriptions SET is_deleted = 1, updated_at = UTC_TIMESTAMP() WHERE id = ?`,
+    `UPDATE subscriptions SET is_deleted = 1 WHERE id = ?`,
     [id]
   );
+}
+
+async function updateStatus(id, status) {
+  await db.query(
+    `UPDATE subscriptions SET status = ? WHERE id = ? AND is_deleted = 0`,
+    [status, id]
+  );
+}
+
+async function deleteById(id) {
+  await deleteSubscription(id);
 }
 
 module.exports = {
@@ -131,6 +142,8 @@ module.exports = {
   cancel,
   renew,
   deleteSubscription,
+  updateStatus,
+  deleteById
 };
 
 
