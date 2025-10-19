@@ -16,6 +16,7 @@ module.exports = {
   momoCallback,
   momoRedirect,
   queryPaymentStatus,
+  queryMomoPaymentStatus,
   refundPayment,
   getRevenueStats,
   getExpiringSoonPayments
@@ -397,7 +398,11 @@ async function getPaymentsBySubscription(req, res) {
 // MoMo IPN Callback
 async function momoCallback(req, res) {
   try {
-    console.log('MoMo Callback received:', req.body);
+    console.log('=== MoMo Callback START ===');
+    console.log('Headers:', req.headers);
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
 
     const verification = momoService.verifyCallback(req.body);
     
@@ -670,6 +675,100 @@ async function getExpiringSoonPayments(req, res) {
     console.error("Get expiring payments error:", error);
     res.status(500).json({
       error: "Lỗi server khi lấy danh sách payments sắp hết hạn"
+    });
+  }
+}
+
+// Query MoMo payment status và cập nhật database
+async function queryMomoPaymentStatus(req, res) {
+  try {
+    const { orderId } = req.params;
+
+    console.log(`=== Query MoMo Payment Status for orderId: ${orderId} ===`);
+
+    // Tìm payment trong database
+    const payment = await Payment.findByTransactionId(orderId);
+    if (!payment) {
+      return res.status(404).json({
+        error: "Payment không tồn tại",
+        orderId
+      });
+    }
+
+    console.log(`Found payment: ${payment.id}, current status: ${payment.status}`);
+
+    // Nếu payment đã paid rồi thì không cần query
+    if (payment.status === 'paid') {
+      return res.json({
+        message: "Payment đã được thanh toán",
+        payment,
+        momoStatus: "PAID"
+      });
+    }
+
+    // Query status từ MoMo
+    const requestId = `${orderId}_QUERY_${Date.now()}`;
+    const momoResult = await momoService.checkPaymentStatus(orderId, requestId);
+
+    if (!momoResult.success) {
+      return res.status(400).json({
+        error: "Không thể query trạng thái từ MoMo",
+        details: momoResult.error,
+        orderId
+      });
+    }
+
+    const { resultCode, message, transId, amount } = momoResult.data;
+    console.log(`MoMo query result: resultCode=${resultCode}, message=${message}`);
+
+    // Cập nhật payment status dựa trên kết quả từ MoMo
+    let newStatus = payment.status;
+    let paidAt = payment.paidAt;
+
+    if (resultCode === 0) {
+      // Thanh toán thành công
+      newStatus = 'paid';
+      paidAt = new Date();
+      
+      await Payment.updateByTransactionId(orderId, {
+        status: newStatus,
+        paidAt
+      });
+
+      console.log(`Payment ${payment.id} updated to status: ${newStatus}`);
+
+      // Cập nhật subscription nếu có
+      if (payment.subscription_id) {
+        await Subscription.updateStatus(payment.subscription_id, 'active');
+        console.log(`Subscription ${payment.subscription_id} activated`);
+      }
+
+    } else if (resultCode === 1006) {
+      // Giao dịch không tồn tại hoặc đã bị hủy
+      newStatus = 'cancelled';
+      await Payment.updateByTransactionId(orderId, { status: newStatus });
+      console.log(`Payment ${payment.id} marked as cancelled`);
+    }
+
+    // Lấy lại payment sau khi cập nhật
+    const updatedPayment = await Payment.findByTransactionId(orderId);
+
+    res.json({
+      message: "Query trạng thái payment thành công",
+      payment: updatedPayment,
+      momoQuery: {
+        resultCode,
+        message,
+        transId,
+        amount,
+        orderId
+      }
+    });
+
+  } catch (error) {
+    console.error("Query MoMo payment status error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi query trạng thái payment"
     });
   }
 }

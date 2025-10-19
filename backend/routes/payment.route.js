@@ -527,6 +527,52 @@ router.get('/momo/redirect', paymentController.momoRedirect);
 
 /**
  * @swagger
+ * /api/v1/payments/momo/query/{orderId}:
+ *   get:
+ *     summary: Query MoMo payment status
+ *     description: Query trạng thái thanh toán từ MoMo và cập nhật database
+ *     tags: [Payments]
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID từ MoMo
+ *     responses:
+ *       200:
+ *         description: Query thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 payment:
+ *                   $ref: '#/components/schemas/Payment'
+ *                 momoQuery:
+ *                   type: object
+ *                   properties:
+ *                     resultCode:
+ *                       type: number
+ *                     message:
+ *                       type: string
+ *                     transId:
+ *                       type: string
+ *                     amount:
+ *                       type: number
+ *                     orderId:
+ *                       type: string
+ *       404:
+ *         description: Payment không tồn tại
+ *       400:
+ *         description: Lỗi query từ MoMo
+ */
+router.get('/momo/query/:orderId', paymentController.queryMomoPaymentStatus);
+
+/**
+ * @swagger
  * /api/v1/payments/{paymentId}/status:
  *   get:
  *     summary: Query trạng thái payment
@@ -562,6 +608,48 @@ router.get('/:paymentId/status',
   handleValidationErrors,
   paymentController.queryPaymentStatus
 );
+
+/**
+ * @swagger
+ * /api/v1/payments/momo/query/{orderId}:
+ *   post:
+ *     summary: Query MoMo payment status
+ *     description: Query trạng thái payment từ MoMo và cập nhật database
+ *     tags: [Payments]
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID từ MoMo
+ *     responses:
+ *       200:
+ *         description: Query thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 payment:
+ *                   $ref: '#/components/schemas/Payment'
+ *                 momoQuery:
+ *                   type: object
+ *                   properties:
+ *                     resultCode:
+ *                       type: number
+ *                     message:
+ *                       type: string
+ *                     orderId:
+ *                       type: string
+ *       404:
+ *         description: Payment không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.post('/momo/query/:orderId', paymentController.queryMomoPaymentStatus);
 
 /**
  * @swagger

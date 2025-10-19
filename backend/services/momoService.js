@@ -35,13 +35,15 @@ async function createPayment({
     // Đảm bảo amount là integer (không có decimal)
     const intAmount = Math.round(parseFloat(amount));
     
-    // Tạo raw signature
+    // Tạo raw signature cho payWithATM
     const rawSignature = `accessKey=${MOMO_CONFIG.accessKey}&amount=${intAmount}&extraData=${extraData}&ipnUrl=${MOMO_CONFIG.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${MOMO_CONFIG.partnerCode}&redirectUrl=${MOMO_CONFIG.redirectUrl}&requestId=${requestId}&requestType=${MOMO_CONFIG.requestType}`;
     
     const signature = createSignature(rawSignature, MOMO_CONFIG.secretKey);
 
     const requestBody = {
       partnerCode: MOMO_CONFIG.partnerCode,
+      partnerName: "Test",
+      storeId: MOMO_CONFIG.partnerCode,
       accessKey: MOMO_CONFIG.accessKey,
       requestId: requestId,
       amount: intAmount, // Sử dụng integer amount
@@ -49,11 +51,10 @@ async function createPayment({
       orderInfo: orderInfo,
       redirectUrl: MOMO_CONFIG.redirectUrl,
       ipnUrl: MOMO_CONFIG.ipnUrl,
+      lang: MOMO_CONFIG.lang,
       extraData: extraData,
       requestType: MOMO_CONFIG.requestType,
-      signature: signature,
-      lang: MOMO_CONFIG.lang
-      // Remove userInfo từ request body chính
+      signature: signature
     };
 
     console.log('MoMo Request:', JSON.stringify(requestBody, null, 2));
