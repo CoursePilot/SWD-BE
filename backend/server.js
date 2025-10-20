@@ -92,7 +92,7 @@ app.get("/health", (req, res) => {
 
 // Root route
 app.get("/", (req, res) => {
-  return res.redirect("/api-docs");
+  return res.redirect("/docs");
 });
 
 // ==========================================
@@ -118,5 +118,5 @@ app.use((err, req, res, next) => {
 // ==========================================
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📘 Swagger docs: http://localhost:${PORT}/api-docs`);
+  console.log(`📘 Swagger docs: http://localhost:${PORT}/docs`);
 });

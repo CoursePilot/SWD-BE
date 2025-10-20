@@ -63,19 +63,23 @@ const isAdmin = (req, res, next) => {
 };
 
 const isEmployee = (req, res, next) => {
-  if (req.user && (req.user.role === 2 || req.user.role?.toLowerCase() === "center")) {ter
-    return next();
+  if (req.user) {
+    const role = req.user.role;
+    const roleLower = typeof role === 'string' ? role.toLowerCase() : null;
+    if (role === 2 || roleLower === "center") {
+      return next();
+    }
   }
-  return res.status(403).json({ error: "Access denied. Employees only." });
+  return res.status(403).json({ error: "Bạn chưa phải là trung tâm" });
 };
 
 const isAdminOrEmployee = (req, res, next) => {
   const role = req.user?.role;
   const roleLower = typeof role === 'string' ? role.toLowerCase() : null;
-  if (req.user && (role === 2 || role === 3 || roleLower === "admin" || roleLower === "employee")) {
+  if (req.user && (role === 2 || role === 3 || roleLower === "admin" || roleLower === "center")) {
     return next();
   }
-  return res.status(403).json({ error: "Forbidden: Admin or Employee only" });
+  return res.status(403).json({ error: "Không có quyền: chỉ Admin hoặc Center" });
 };
 
 module.exports = {

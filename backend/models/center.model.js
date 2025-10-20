@@ -98,19 +98,10 @@ async function hasPendingRequest(userId) {
 
 // Cập nhật trạng thái center (approve/reject)
 async function updateStatus(id, status, adminNotes = null) {
-  let updateFields = ["status = ?", "updated_at = UTC_TIMESTAMP()"];
-  let params = [status];
-
-  if (adminNotes) {
-    updateFields.push("admin_notes = ?");
-    params.push(adminNotes);
-  }
-
-  params.push(id);
-
+  // Tạm thời bỏ qua adminNotes vì cột admin_notes chưa tồn tại trong database
   await db.query(
-    `UPDATE centers SET ${updateFields.join(", ")} WHERE id = ? AND is_deleted = 0`,
-    params
+    "UPDATE centers SET status = ?, updated_at = UTC_TIMESTAMP() WHERE id = ? AND is_deleted = 0",
+    [status, id]
   );
 }
 
