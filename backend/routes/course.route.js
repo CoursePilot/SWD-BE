@@ -457,4 +457,65 @@ router.get('/my',
   courseController.getMyCourses
 );
 
+/**
+ * @swagger
+ * /api/v1/courses/{courseId}/approve:
+ *   post:
+ *     summary: Admin approve course
+ *     description: Admin phê duyệt course
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               adminNote:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Approve thành công
+ *       404:
+ *         description: Course không tồn tại
+ */
+router.post('/:courseId/approve', courseController.approveCourse);
+
+/**
+ * @swagger
+ * /api/v1/courses/{courseId}/reject:
+ *   post:
+ *     summary: Admin reject course
+ *     description: Admin từ chối course
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               adminNote:
+ *                 type: string
+ *               refundQuota:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Reject thành công
+ *       404:
+ *         description: Course không tồn tại
+ */
+router.post('/:courseId/reject', courseController.rejectCourse);
+
 module.exports = router;
