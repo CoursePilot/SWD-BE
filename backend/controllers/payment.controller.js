@@ -135,12 +135,12 @@ async function createMomoPayment(req, res) {
 
     // Tạo payment record trong database
     const paymentId = await Payment.create({
-      subscription_id: subscriptionId,
+      subscriptionId: subscriptionId,
       amount: plan.price,
       method: 'momo',
       status: 'failed', // Tạm thời failed, sẽ chuyển thành paid khi thanh toán thành công
-      invoice_no: invoiceNo,
-      transaction_id: orderId
+      invoiceNo: invoiceNo,
+      transactionId: orderId
     });
 
     // Tạo extraData cho MoMo
