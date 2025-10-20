@@ -1,9 +1,15 @@
 const { Resend } = require('resend');
 
-// Initialize a single Resend client instance for reuse
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Function to create Resend instance
+function createResendClient() {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not set in environment variables');
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 async function sendVerificationEmail(toEmail, verifyUrl) {
+  const resend = createResendClient();
   const fromEmail = process.env.EMAIL_FROM;
 
   const html = `
@@ -39,6 +45,7 @@ module.exports = {
 };
 
 async function sendEmailOtp(toEmail, code) {
+  const resend = createResendClient();
   const fromEmail = process.env.EMAIL_FROM;
 
   const html = `
