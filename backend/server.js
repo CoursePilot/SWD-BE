@@ -54,10 +54,6 @@ subscriptionCron.setupCronJobs();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-<<<<<<< HEAD
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
-=======
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📘 Swagger docs: http://localhost:${PORT}/docs`);
 >>>>>>> f38fc3caccb23ac5ecb4825714fada9baa83e8c0
