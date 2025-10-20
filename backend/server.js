@@ -45,7 +45,7 @@ app.use("/api/v1/knowledge", require("./routes/knowledge.route"));
 
 // Root route for convenience
 app.get("/", (req, res) => {
-  return res.redirect("/api-docs");
+  return res.redirect("/docs");
 });
 
 const PORT = process.env.PORT || 3000;
