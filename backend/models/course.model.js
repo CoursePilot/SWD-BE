@@ -2,7 +2,7 @@ const db = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 
 // Tạo course mới
-async function create({ centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status = 'draft' }) {
+async function create({ centerId, categoryId, title, summary, imageUrl, content, priceMin, priceMax, modality, status = 'draft' }) {
   // Validate modality
   const validModalities = ['online', 'offline', 'blended'];
   if (modality && !validModalities.includes(modality)) {
@@ -16,8 +16,8 @@ async function create({ centerId, categoryId, title, summary, content, priceMin,
   }
   const id = uuidv4();
   await db.query(
-    "INSERT INTO courses (id, center_id, category_id, title, summary, content, price_min, price_max, modality, status, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP())",
-    [id, centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status]
+    "INSERT INTO courses (id, center_id, category_id, title, summary, image_url, content, price_min, price_max, modality, status, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP())",
+    [id, centerId, categoryId, title, summary, imageUrl, content, priceMin, priceMax, modality, status]
   );
   return id;
 }
@@ -31,6 +31,7 @@ async function findById(id) {
       c.category_id AS categoryId, 
       c.title, 
       c.summary, 
+      c.image_url AS imageUrl,
       c.content, 
       c.price_min AS priceMin, 
       c.price_max AS priceMax, 
@@ -87,6 +88,7 @@ async function findAll({ page = 1, limit = 10, centerId = null, categoryId = nul
       c.category_id AS categoryId, 
       c.title, 
       c.summary, 
+      c.image_url AS imageUrl,
       c.content, 
       c.price_min AS priceMin, 
       c.price_max AS priceMax, 
@@ -146,6 +148,7 @@ async function findByCenterId(centerId, { page = 1, limit = 10, status = null })
       c.category_id AS categoryId, 
       c.title, 
       c.summary, 
+      c.image_url AS imageUrl,
       c.content, 
       c.price_min AS priceMin, 
       c.price_max AS priceMax, 
@@ -183,7 +186,7 @@ async function findByCenterId(centerId, { page = 1, limit = 10, status = null })
 }
 
 // Cập nhật course
-async function updateById(id, { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status }) {
+async function updateById(id, { centerId, categoryId, title, summary, imageUrl, content, priceMin, priceMax, modality, status }) {
   const fields = [];
   const params = [];
 
@@ -205,6 +208,11 @@ async function updateById(id, { centerId, categoryId, title, summary, content, p
   if (summary !== undefined) {
     fields.push("summary = ?");
     params.push(summary);
+  }
+
+  if (imageUrl !== undefined) {
+    fields.push("image_url = ?");
+    params.push(imageUrl);
   }
 
   if (content !== undefined) {

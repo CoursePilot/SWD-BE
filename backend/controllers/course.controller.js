@@ -30,6 +30,42 @@ async function createCourse(req, res) {
 
     const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
 
+    // Xử lý image upload nếu có
+    let imageUrl = null;
+    if (req.files && req.files.image && req.files.image[0]) {
+      try {
+        const supabase = require('../config/supabase');
+        const imageFile = req.files.image[0];
+        const fileName = `course-${Date.now()}-${imageFile.originalname.replace(/\s+/g, "_")}`;
+        const filePath = `courses/${centerId}/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('SWD_image')
+          .upload(filePath, imageFile.buffer, {
+            contentType: imageFile.mimetype,
+            upsert: false
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          return res.status(500).json({
+            error: "Failed to upload course image"
+          });
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('SWD_image')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+      } catch (uploadError) {
+        console.error("Course image upload failed:", uploadError);
+        return res.status(500).json({
+          error: "Course image upload failed"
+        });
+      }
+    }
+
     // Kiểm tra xem center có tồn tại không
     const center = await Center.findById(centerId);
     if (!center) {
@@ -57,6 +93,7 @@ async function createCourse(req, res) {
       categoryId,
       title,
       summary,
+      imageUrl,
       content,
       priceMin,
       priceMax,
@@ -168,6 +205,54 @@ async function updateCourse(req, res) {
     const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
     const userId = req.user.id;
 
+    // Xử lý image upload nếu có
+    let imageUrl = null;
+    if (req.files && req.files.image && req.files.image[0]) {
+      try {
+        const supabase = require('../config/supabase');
+        const imageFile = req.files.image[0];
+        const fileName = `course-${Date.now()}-${imageFile.originalname.replace(/\s+/g, "_")}`;
+        const filePath = `courses/${course.centerId}/${fileName}`;
+
+        // Delete old image if exists
+        if (course.imageUrl) {
+          try {
+            const urlParts = course.imageUrl.split('/');
+            const oldFileName = urlParts[urlParts.length - 1];
+            const oldFilePath = `courses/${course.centerId}/${oldFileName}`;
+            await supabase.storage.from('SWD_image').remove([oldFilePath]);
+          } catch (deleteError) {
+            console.log('Old image deletion failed:', deleteError);
+          }
+        }
+
+        const { data, error } = await supabase.storage
+          .from('SWD_image')
+          .upload(filePath, imageFile.buffer, {
+            contentType: imageFile.mimetype,
+            upsert: false
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          return res.status(500).json({
+            error: "Failed to upload course image"
+          });
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('SWD_image')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+      } catch (uploadError) {
+        console.error("Course image upload failed:", uploadError);
+        return res.status(500).json({
+          error: "Course image upload failed"
+        });
+      }
+    }
+
     // Kiểm tra course tồn tại
     const course = await Course.findById(id);
     if (!course) {
@@ -205,6 +290,7 @@ async function updateCourse(req, res) {
       categoryId,
       title,
       summary,
+      imageUrl,
       content,
       priceMin,
       priceMax,

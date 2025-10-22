@@ -112,21 +112,16 @@ async function createMomoPayment(req, res) {
     const subscriptionId = uuidv4();
     
     // Tính ngày hết hạn dựa trên duration của plan
+    const startDate = new Date();
     const endDate = new Date();
-    if (plan.duration_type === 'month') {
-      endDate.setMonth(endDate.getMonth() + plan.duration_value);
-    } else if (plan.duration_type === 'year') {
-      endDate.setFullYear(endDate.getFullYear() + plan.duration_value);
-    } else if (plan.duration_type === 'day') {
-      endDate.setDate(endDate.getDate() + plan.duration_value);
-    }
+    endDate.setDate(endDate.getDate() + plan.durationDays);
 
     await Subscription.create({
       id: subscriptionId,
       centerId: centerId,
       planId: planId,
       status: 'cancelled', // Tạm thời cancelled, sẽ chuyển thành active khi thanh toán thành công
-      startAt: new Date(),
+      startAt: startDate,
       endAt: endDate
     });
 

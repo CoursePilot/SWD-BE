@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const courseController = require('../controllers/course.controller');
 const { auth, isAdmin, isAdminOrEmployee } = require('../middlewares/auth.middleware');
+const { upload, handleMulterError } = require('../middlewares/upload.middleware');
 const { 
   validateCreateCourse, 
   validateUpdateCourse, 
@@ -36,6 +37,9 @@ const {
  *         summary:
  *           type: string
  *           description: Tóm tắt khóa học
+ *         imageUrl:
+ *           type: string
+ *           description: URL hình ảnh khóa học
  *         content:
  *           type: string
  *           description: Nội dung chi tiết
@@ -51,7 +55,7 @@ const {
  *           description: Hình thức học
  *         status:
  *           type: string
- *           enum: [draft, published, archived]
+ *           enum: [draft, submitted, approved, rejected]
  *           description: Trạng thái khóa học
  *         createdAt:
  *           type: string
@@ -104,7 +108,7 @@ const {
  *         name: status
  *         schema:
  *           type: string
- *           enum: [draft, published, archived]
+ *           enum: [draft, submitted, approved, rejected]
  *         description: Lọc theo trạng thái
  *       - in: query
  *         name: modality
@@ -215,7 +219,7 @@ router.get('/:id', courseController.getCourseById);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [draft, published, archived]
+ *           enum: [draft, submitted, approved, rejected]
  *         description: Lọc theo trạng thái
  *     responses:
  *       200:
@@ -237,7 +241,7 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -268,6 +272,10 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *                 minLength: 20
  *                 maxLength: 500
  *                 description: Tóm tắt khóa học
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Hình ảnh khóa học (optional)
  *               content:
  *                 type: string
  *                 minLength: 50
@@ -287,7 +295,7 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *                 description: Hình thức học
  *               status:
  *                 type: string
- *                 enum: [draft, published, archived]
+ *                 enum: [draft, submitted, approved, rejected]
  *                 default: draft
  *                 description: Trạng thái khóa học
  *     responses:
@@ -303,6 +311,8 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *         description: Trung tâm không tồn tại
  */
 router.post('/', 
+  upload.fields([{ name: 'image', maxCount: 1 }]),
+  handleMulterError,
   validateCreateCourse,
   handleValidationErrors,
   courseController.createCourse
@@ -326,7 +336,7 @@ router.post('/',
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -348,6 +358,10 @@ router.post('/',
  *                 minLength: 20
  *                 maxLength: 500
  *                 description: Tóm tắt khóa học
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Hình ảnh khóa học (optional)
  *               content:
  *                 type: string
  *                 minLength: 50
@@ -367,7 +381,7 @@ router.post('/',
  *                 description: Hình thức học
  *               status:
  *                 type: string
- *                 enum: [draft, published, archived]
+ *                 enum: [draft, submitted, approved, rejected]
  *                 description: Trạng thái khóa học
  *     responses:
  *       200:
@@ -382,6 +396,8 @@ router.post('/',
  *         description: Khóa học không tồn tại
  */
 router.put('/:id', 
+  upload.fields([{ name: 'image', maxCount: 1 }]),
+  handleMulterError,
   validateUpdateCourse,
   handleValidationErrors,
   courseController.updateCourse
@@ -443,7 +459,7 @@ router.delete('/:id',
  *         name: status
  *         schema:
  *           type: string
- *           enum: [draft, published, archived]
+ *           enum: [draft, submitted, approved, rejected]
  *         description: Lọc theo trạng thái
  *     responses:
  *       200:
