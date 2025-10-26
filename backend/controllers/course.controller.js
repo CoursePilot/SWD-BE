@@ -1,6 +1,8 @@
 const Course = require("../models/course.model");
 const Center = require("../models/center.model");
+const Subscription = require("../models/subscription.model");
 const { validationResult } = require("express-validator");
+const db = require("../config/db");
 
 module.exports = {
   createCourse,
@@ -9,7 +11,9 @@ module.exports = {
   updateCourse,
   deleteCourse,
   getCoursesByCenter,
-  getMyCourses
+  getMyCourses,
+  approveCourse,
+  rejectCourse
 };
 
 // Tạo course mới
@@ -26,6 +30,42 @@ async function createCourse(req, res) {
 
     const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
 
+    // Xử lý image upload nếu có
+    let imageUrl = null;
+    if (req.files && req.files.image && req.files.image[0]) {
+      try {
+        const supabase = require('../config/supabase');
+        const imageFile = req.files.image[0];
+        const fileName = `course-${Date.now()}-${imageFile.originalname.replace(/\s+/g, "_")}`;
+        const filePath = `courses/${centerId}/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('SWD_image')
+          .upload(filePath, imageFile.buffer, {
+            contentType: imageFile.mimetype,
+            upsert: false
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          return res.status(500).json({
+            error: "Failed to upload course image"
+          });
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('SWD_image')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+      } catch (uploadError) {
+        console.error("Course image upload failed:", uploadError);
+        return res.status(500).json({
+          error: "Course image upload failed"
+        });
+      }
+    }
+
     // Kiểm tra xem center có tồn tại không
     const center = await Center.findById(centerId);
     if (!center) {
@@ -34,11 +74,26 @@ async function createCourse(req, res) {
       });
     }
 
+    // Kiểm tra subscription và post quota
+    const quotaCheck = await Subscription.checkQuotaAvailable(centerId, 'post');
+    if (!quotaCheck.available) {
+      return res.status(403).json({
+        error: "Không thể tạo course",
+        reason: quotaCheck.reason,
+        quota: {
+          used: quotaCheck.used,
+          limit: quotaCheck.limit,
+          remaining: quotaCheck.remaining
+        }
+      });
+    }
+
     const courseId = await Course.create({
       centerId,
       categoryId,
       title,
       summary,
+      imageUrl,
       content,
       priceMin,
       priceMax,
@@ -46,11 +101,23 @@ async function createCourse(req, res) {
       status: status || 'draft'
     });
 
+    // Tăng post_used counter nếu course được tạo thành công
+    const subscription = await Subscription.findActiveByCenterId(centerId);
+    if (subscription) {
+      await Subscription.incrementPostUsed(subscription.id);
+      console.log(`Post quota used: ${subscription.post_used + 1}/${subscription.planPostQuota} for center ${centerId}`);
+    }
+
     const course = await Course.findById(courseId);
 
     res.status(201).json({
       message: "Tạo khóa học thành công",
-      course
+      course,
+      quota: {
+        used: quotaCheck.used + 1,
+        limit: quotaCheck.limit,
+        remaining: quotaCheck.remaining - 1
+      }
     });
 
   } catch (error) {
@@ -138,6 +205,54 @@ async function updateCourse(req, res) {
     const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
     const userId = req.user.id;
 
+    // Xử lý image upload nếu có
+    let imageUrl = null;
+    if (req.files && req.files.image && req.files.image[0]) {
+      try {
+        const supabase = require('../config/supabase');
+        const imageFile = req.files.image[0];
+        const fileName = `course-${Date.now()}-${imageFile.originalname.replace(/\s+/g, "_")}`;
+        const filePath = `courses/${course.centerId}/${fileName}`;
+
+        // Delete old image if exists
+        if (course.imageUrl) {
+          try {
+            const urlParts = course.imageUrl.split('/');
+            const oldFileName = urlParts[urlParts.length - 1];
+            const oldFilePath = `courses/${course.centerId}/${oldFileName}`;
+            await supabase.storage.from('SWD_image').remove([oldFilePath]);
+          } catch (deleteError) {
+            console.log('Old image deletion failed:', deleteError);
+          }
+        }
+
+        const { data, error } = await supabase.storage
+          .from('SWD_image')
+          .upload(filePath, imageFile.buffer, {
+            contentType: imageFile.mimetype,
+            upsert: false
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          return res.status(500).json({
+            error: "Failed to upload course image"
+          });
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('SWD_image')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+      } catch (uploadError) {
+        console.error("Course image upload failed:", uploadError);
+        return res.status(500).json({
+          error: "Course image upload failed"
+        });
+      }
+    }
+
     // Kiểm tra course tồn tại
     const course = await Course.findById(id);
     if (!course) {
@@ -175,6 +290,7 @@ async function updateCourse(req, res) {
       categoryId,
       title,
       summary,
+      imageUrl,
       content,
       priceMin,
       priceMax,
@@ -316,6 +432,104 @@ async function getMyCourses(req, res) {
     console.error("Get my courses error:", error);
     res.status(500).json({
       error: "Lỗi server khi lấy danh sách khóa học"
+    });
+  }
+}
+
+// Admin approve course
+async function approveCourse(req, res) {
+  try {
+    const { courseId } = req.params;
+    const { adminNote } = req.body;
+
+    // Kiểm tra course tồn tại
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        error: "Course không tồn tại"
+      });
+    }
+
+    // Kiểm tra course chưa được approve
+    if (course.status === 'approved') {
+      return res.status(400).json({
+        error: "Course đã được approve trước đó"
+      });
+    }
+
+    // Update course status
+    await Course.update(courseId, {
+      status: 'approved',
+      adminNote: adminNote || null,
+      approvedAt: new Date()
+    });
+
+    // Note: Post quota đã được tăng khi create course
+    // Không cần tăng thêm ở đây
+
+    const updatedCourse = await Course.findById(courseId);
+
+    res.json({
+      message: "Course đã được approve thành công",
+      course: updatedCourse
+    });
+
+  } catch (error) {
+    console.error("Approve course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi approve course"
+    });
+  }
+}
+
+// Admin reject course  
+async function rejectCourse(req, res) {
+  try {
+    const { courseId } = req.params;
+    const { adminNote, refundQuota = false } = req.body;
+
+    // Kiểm tra course tồn tại
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        error: "Course không tồn tại"
+      });
+    }
+
+    // Update course status
+    await Course.update(courseId, {
+      status: 'rejected',
+      adminNote: adminNote || null,
+      rejectedAt: new Date()
+    });
+
+    // Hoàn lại quota nếu được yêu cầu
+    if (refundQuota) {
+      const subscription = await Subscription.findActiveByCenterId(course.centerId);
+      if (subscription && subscription.post_used > 0) {
+        await db.query(`
+          UPDATE subscriptions 
+          SET post_used = GREATEST(0, post_used - 1),
+              updated_at = NOW()
+          WHERE id = ?
+        `, [subscription.id]);
+        
+        console.log(`Refunded 1 post quota for center ${course.centerId}`);
+      }
+    }
+
+    const updatedCourse = await Course.findById(courseId);
+
+    res.json({
+      message: refundQuota ? "Course đã bị reject và hoàn quota" : "Course đã bị reject",
+      course: updatedCourse,
+      quotaRefunded: refundQuota
+    });
+
+  } catch (error) {
+    console.error("Reject course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi reject course"
     });
   }
 }

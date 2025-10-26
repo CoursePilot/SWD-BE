@@ -4,6 +4,7 @@ const Subscription = require('../models/subscription.model');
 const Plan = require('../models/plan.model');
 const Center = require('../models/center.model');
 const momoService = require('../services/momoService');
+const db = require('../config/db');
 
 module.exports = {
   createPayment,
@@ -111,21 +112,16 @@ async function createMomoPayment(req, res) {
     const subscriptionId = uuidv4();
     
     // Tính ngày hết hạn dựa trên duration của plan
+    const startDate = new Date();
     const endDate = new Date();
-    if (plan.duration_type === 'month') {
-      endDate.setMonth(endDate.getMonth() + plan.duration_value);
-    } else if (plan.duration_type === 'year') {
-      endDate.setFullYear(endDate.getFullYear() + plan.duration_value);
-    } else if (plan.duration_type === 'day') {
-      endDate.setDate(endDate.getDate() + plan.duration_value);
-    }
+    endDate.setDate(endDate.getDate() + plan.durationDays);
 
     await Subscription.create({
       id: subscriptionId,
       centerId: centerId,
       planId: planId,
       status: 'cancelled', // Tạm thời cancelled, sẽ chuyển thành active khi thanh toán thành công
-      startAt: new Date(),
+      startAt: startDate,
       endAt: endDate
     });
 
@@ -445,9 +441,9 @@ async function momoCallback(req, res) {
     console.log(`Payment ${payment.id} updated to status: ${newStatus}`);
 
     // Nếu payment completed, cập nhật subscription status thành active
-    if (resultCode === 0 && payment.subscription_id) {
-      await Subscription.updateStatus(payment.subscription_id, 'active');
-      console.log(`Subscription ${payment.subscription_id} activated (status: active)`);
+    if (resultCode === 0 && payment.subscriptionId) {
+      await Subscription.updateStatus(payment.subscriptionId, 'active');
+      console.log(`Subscription ${payment.subscriptionId} activated (status: active)`);
     }
 
     res.json({
@@ -696,6 +692,8 @@ async function queryMomoPaymentStatus(req, res) {
     }
 
     console.log(`Found payment: ${payment.id}, current status: ${payment.status}`);
+    console.log(`Payment subscriptionId: ${payment.subscriptionId || 'NULL'}`);
+    console.log(`Payment object:`, JSON.stringify(payment, null, 2));
 
     // Nếu payment đã paid rồi thì không cần query
     if (payment.status === 'paid') {
@@ -738,9 +736,48 @@ async function queryMomoPaymentStatus(req, res) {
       console.log(`Payment ${payment.id} updated to status: ${newStatus}`);
 
       // Cập nhật subscription nếu có
-      if (payment.subscription_id) {
-        await Subscription.updateStatus(payment.subscription_id, 'active');
-        console.log(`Subscription ${payment.subscription_id} activated`);
+      if (payment.subscriptionId) {
+        console.log(`Updating subscription ${payment.subscriptionId} to active status...`);
+        
+        // Check current subscription first
+        const [currentSub] = await db.query(
+          'SELECT id, status, is_deleted FROM subscriptions WHERE id = ?',
+          [payment.subscriptionId]
+        );
+        console.log('Current subscription:', currentSub[0]);
+        
+        // Try different possible enum values
+        try {
+          // First try with 'paid' since payment is successful
+          await Subscription.updateStatus(payment.subscriptionId, 'paid');
+          console.log(`Subscription ${payment.subscriptionId} updated to paid status successfully`);
+        } catch (error) {
+          console.log('Failed with "paid", trying other values...', error.message);
+          
+          // Try other possible enum values
+          const possibleValues = ['active', 'pending', 'cancelled', 'expired', 'trial'];
+          for (const value of possibleValues) {
+            try {
+              console.log(`Trying status: ${value}`);
+              await Subscription.updateStatus(payment.subscriptionId, value);
+              console.log(`Successfully updated to: ${value}`);
+              break;
+            } catch (enumError) {
+              console.log(`Failed with "${value}":`, enumError.message);
+            }
+          }
+        }
+        console.log(`Subscription ${payment.subscriptionId} activated successfully`);
+        
+        // Verify update
+        const [updatedSub] = await db.query(
+          'SELECT id, status, is_deleted FROM subscriptions WHERE id = ?',
+          [payment.subscriptionId]
+        );
+        console.log('Updated subscription:', updatedSub[0]);
+        
+      } else {
+        console.log(`Warning: Payment ${payment.id} has no subscriptionId to activate`);
       }
 
     } else if (resultCode === 1006) {

@@ -5,10 +5,29 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    // Check if file is an image
-    if (file.mimetype.startsWith('image/')) {
+    // Debug logging
+    console.log('File upload debug:');
+    console.log('- Field name:', file.fieldname);
+    console.log('- Original name:', file.originalname);
+    console.log('- MIME type:', file.mimetype);
+    
+    // Check if file is an image by MIME type
+    const isImageMime = file.mimetype.startsWith('image/');
+    
+    // Fallback: check by file extension
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+    const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+    const isImageExtension = allowedExtensions.includes(fileExtension);
+    
+    console.log('- File extension:', fileExtension);
+    console.log('- Is image by MIME:', isImageMime);
+    console.log('- Is image by extension:', isImageExtension);
+    
+    if (isImageMime || isImageExtension) {
+      console.log('✅ File accepted as image');
       cb(null, true);
     } else {
+      console.log('❌ File rejected - not an image');
       cb(new Error('Only image files are allowed!'), false);
     }
   }

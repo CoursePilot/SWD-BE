@@ -125,14 +125,126 @@ async function deleteSubscription(id) {
 }
 
 async function updateStatus(id, status) {
-  await db.query(
-    `UPDATE subscriptions SET status = ? WHERE id = ? AND is_deleted = 0`,
-    [status, id]
-  );
+  try {
+    console.log(`Updating subscription ${id} to status: ${status}`);
+    const [result] = await db.query(
+      `UPDATE subscriptions SET status = ? WHERE id = ? AND is_deleted = 0`,
+      [status, id]
+    );
+    console.log(`Update result: affectedRows=${result.affectedRows}, changedRows=${result.changedRows}`);
+    
+    if (result.affectedRows === 0) {
+      console.log(`Warning: No subscription found with id ${id} or already deleted`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`Error updating subscription ${id} status to ${status}:`, error);
+    throw error;
+  }
 }
 
 async function deleteById(id) {
   await deleteSubscription(id);
+}
+
+// Tìm subscription active của center
+async function findActiveByCenterId(centerId) {
+  const [rows] = await db.query(`
+    SELECT 
+      s.*,
+      p.lead_quota AS planLeadQuota,
+      p.post_quota AS planPostQuota,
+      p.name AS planName,
+      p.duration_days AS planDurationDays
+    FROM subscriptions s
+    JOIN plans p ON s.plan_id = p.id
+    WHERE s.center_id = ? AND s.status = 'active'
+    ORDER BY s.start_at DESC LIMIT 1
+  `, [centerId]);
+  
+  return rows[0] || null;
+}
+
+// Tăng lead_used counter
+async function incrementLeadUsed(subscriptionId) {
+  const [result] = await db.query(`
+    UPDATE subscriptions 
+    SET lead_used = lead_used + 1
+    WHERE id = ?
+  `, [subscriptionId]);
+  
+  return result.affectedRows > 0;
+}
+
+// Tăng post_used counter  
+async function incrementPostUsed(subscriptionId) {
+  const [result] = await db.query(`
+    UPDATE subscriptions 
+    SET post_used = post_used + 1
+    WHERE id = ?
+  `, [subscriptionId]);
+  
+  return result.affectedRows > 0;
+}
+
+// Kiểm tra và cập nhật expired subscriptions
+async function checkAndUpdateExpired() {
+  const [result] = await db.query(`
+    UPDATE subscriptions 
+    SET status = 'expired'
+    WHERE status = 'active' 
+    AND end_at < NOW()
+  `);
+  
+  console.log(`Updated ${result.affectedRows} expired subscriptions`);
+  return result.affectedRows;
+}
+
+// Kiểm tra quota limits và cancel subscription
+async function checkAndCancelOverQuota() {
+  const [result] = await db.query(`
+    UPDATE subscriptions s
+    JOIN plans p ON s.plan_id = p.id
+    SET s.status = 'cancelled'
+    WHERE s.status = 'active'
+    AND (s.lead_used >= p.lead_quota OR s.post_used >= p.post_quota)
+  `);
+  
+  console.log(`Cancelled ${result.affectedRows} over-quota subscriptions`);
+  return result.affectedRows;
+}
+
+// Kiểm tra subscription có còn quota không
+async function checkQuotaAvailable(centerId, type) {
+  const subscription = await findActiveByCenterId(centerId);
+  if (!subscription) {
+    return { available: false, reason: 'No active subscription' };
+  }
+
+  if (type === 'lead') {
+    const available = subscription.lead_used < subscription.planLeadQuota;
+    return {
+      available,
+      used: subscription.lead_used,
+      limit: subscription.planLeadQuota,
+      remaining: subscription.planLeadQuota - subscription.lead_used,
+      reason: available ? null : 'Lead quota exceeded'
+    };
+  }
+
+  if (type === 'post') {
+    const available = subscription.post_used < subscription.planPostQuota;
+    return {
+      available,
+      used: subscription.post_used,
+      limit: subscription.planPostQuota,
+      remaining: subscription.planPostQuota - subscription.post_used,
+      reason: available ? null : 'Post quota exceeded'
+    };
+  }
+
+  return { available: false, reason: 'Invalid quota type' };
 }
 
 module.exports = {
@@ -143,7 +255,13 @@ module.exports = {
   renew,
   deleteSubscription,
   updateStatus,
-  deleteById
+  deleteById,
+  findActiveByCenterId,
+  incrementLeadUsed,
+  incrementPostUsed,
+  checkAndUpdateExpired,
+  checkAndCancelOverQuota,
+  checkQuotaAvailable
 };
 
 

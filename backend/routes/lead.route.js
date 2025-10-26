@@ -1,0 +1,301 @@
+const express = require('express');
+const router = express.Router();
+const leadController = require('../controllers/lead.controller');
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Lead:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         courseId:
+ *           type: string
+ *           format: uuid
+ *         scheduleId:
+ *           type: string
+ *           format: uuid
+ *         studentId:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         note:
+ *           type: string
+ *         consentAt:
+ *           type: string
+ *           format: date-time
+ *         status:
+ *           type: string
+ *           enum: [new, forwarded, on_hold, invalid]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/v1/leads:
+ *   post:
+ *     summary: Tạo lead mới
+ *     description: Tạo lead mới và kiểm tra quota subscription
+ *     tags: [Leads]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - courseId
+ *               - studentId
+ *             properties:
+ *               courseId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của course
+ *                 example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               scheduleId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của schedule (optional)
+ *                 example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               studentId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của student (REQUIRED) - sẽ tự động điền name, email, phone từ users table
+ *                 example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               note:
+ *                 type: string
+ *                 description: Ghi chú (optional)
+ *                 example: "Student quan tâm đến khóa học này"
+ *               consentAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Thời gian đồng ý (optional)
+ *                 example: "2025-10-20T12:53:47.075Z"
+ *               name:
+ *                 type: string
+ *                 description: "[AUTO-FILL] Tên khách hàng (tự động từ studentId, có thể override nếu cần)"
+ *               email:
+ *                 type: string
+ *                 description: "[AUTO-FILL] Email khách hàng (tự động từ studentId, có thể override nếu cần)"
+ *               phone:
+ *                 type: string
+ *                 description: "[AUTO-FILL] Số điện thoại (tự động từ studentId, có thể override nếu cần)"
+ *             example:
+ *               courseId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               scheduleId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               studentId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               note: "Student quan tâm đến khóa học này"
+ *     responses:
+ *       201:
+ *         description: Tạo lead thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Tạo lead thành công"
+ *                 lead:
+ *                   $ref: '#/components/schemas/Lead'
+ *                 quota:
+ *                   type: object
+ *                   properties:
+ *                     used:
+ *                       type: integer
+ *                       description: Số lead đã sử dụng
+ *                     limit:
+ *                       type: integer
+ *                       description: Giới hạn lead
+ *                     remaining:
+ *                       type: integer
+ *                       description: Số lead còn lại
+ *                 autoFilled:
+ *                   type: object
+ *                   description: Thông tin tự động điền (chỉ có khi sử dụng studentId)
+ *                   properties:
+ *                     from:
+ *                       type: string
+ *                       example: "student"
+ *                     studentInfo:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         fullName:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *       403:
+ *         description: Hết quota lead
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Đã hết quota lead"
+ *       404:
+ *         description: Center không tồn tại
+ */
+router.post('/', leadController.createLead);
+
+/**
+ * @swagger
+ * /api/v1/leads:
+ *   get:
+ *     summary: Lấy danh sách leads
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: centerId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Danh sách leads
+ */
+router.get('/', leadController.getAllLeads);
+
+/**
+ * @swagger
+ * /api/v1/leads/{leadId}:
+ *   get:
+ *     summary: Lấy thông tin lead
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Thông tin lead
+ *       404:
+ *         description: Lead không tồn tại
+ */
+router.get('/:leadId', leadController.getLeadById);
+
+/**
+ * @swagger
+ * /api/v1/leads/{leadId}:
+ *   put:
+ *     summary: Cập nhật lead
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               customerName:
+ *                 type: string
+ *               customerPhone:
+ *                 type: string
+ *               customerEmail:
+ *                 type: string
+ *               courseInterest:
+ *                 type: string
+ *               source:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *       404:
+ *         description: Lead không tồn tại
+ */
+router.put('/:leadId', leadController.updateLead);
+
+/**
+ * @swagger
+ * /api/v1/leads/{leadId}:
+ *   delete:
+ *     summary: Xóa lead
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Xóa thành công
+ *       404:
+ *         description: Lead không tồn tại
+ */
+router.delete('/:leadId', leadController.deleteLead);
+
+/**
+ * @swagger
+ * /api/v1/leads/center/{centerId}:
+ *   get:
+ *     summary: Lấy leads theo center
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: path
+ *         name: centerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Danh sách leads theo center
+ */
+router.get('/center/:centerId', leadController.getLeadsByCenter);
+
+module.exports = router;
