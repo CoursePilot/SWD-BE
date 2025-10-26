@@ -336,15 +336,49 @@ async function getMyCenter(req, res) {
   try {
     const userId = req.user.id;
     
-    const center = await Center.findByUserId(userId);
+    const center = await Center.findByUserIdWithSubscription(userId);
     if (!center || center.status === 'pending') {
       return res.status(404).json({
         error: "Bạn chưa phải là trung tâm"
       });
     }
 
+    // Format response với subscription info
+    const response = {
+      id: center.id,
+      userId: center.userId,
+      name: center.name,
+      logoUrl: center.logoUrl,
+      phone: center.phone,
+      address: center.address,
+      websiteUrl: center.websiteUrl,
+      verified: center.verified,
+      status: center.status,
+      description: center.description,
+      createdAt: center.createdAt,
+      updatedAt: center.updatedAt,
+      subscription: center.subscriptionId ? {
+        id: center.subscriptionId,
+        status: center.subscriptionStatus,
+        startAt: center.subscriptionStartAt,
+        endAt: center.subscriptionEndAt,
+        leadUsed: center.leadUsed,
+        postUsed: center.postUsed,
+        leadRemaining: center.leadRemaining,
+        postRemaining: center.postRemaining,
+        plan: {
+          id: center.planId,
+          name: center.planName,
+          price: center.planPrice,
+          durationDays: center.planDurationDays,
+          leadQuota: center.leadQuota,
+          postQuota: center.postQuota
+        }
+      } : null
+    };
+
     return res.status(200).json({
-      center
+      center: response
     });
   } catch (err) {
     console.error("Get my center error:", err);
@@ -456,15 +490,51 @@ async function getCenterById(req, res) {
   try {
     const { id } = req.params;
     
-    const center = await Center.findByIdWithUser(id);
+    const center = await Center.findByIdWithSubscription(id);
     if (!center) {
       return res.status(404).json({
         error: "Không tìm thấy trung tâm"
       });
     }
 
+    // Format response với subscription info
+    const response = {
+      id: center.id,
+      userId: center.userId,
+      name: center.name,
+      logoUrl: center.logoUrl,
+      phone: center.phone,
+      address: center.address,
+      websiteUrl: center.websiteUrl,
+      verified: center.verified,
+      status: center.status,
+      description: center.description,
+      createdAt: center.createdAt,
+      updatedAt: center.updatedAt,
+      userName: center.userName,
+      userEmail: center.userEmail,
+      subscription: center.subscriptionId ? {
+        id: center.subscriptionId,
+        status: center.subscriptionStatus,
+        startAt: center.subscriptionStartAt,
+        endAt: center.subscriptionEndAt,
+        leadUsed: center.leadUsed,
+        postUsed: center.postUsed,
+        leadRemaining: center.leadRemaining,
+        postRemaining: center.postRemaining,
+        plan: {
+          id: center.planId,
+          name: center.planName,
+          price: center.planPrice,
+          durationDays: center.planDurationDays,
+          leadQuota: center.leadQuota,
+          postQuota: center.postQuota
+        }
+      } : null
+    };
+
     return res.status(200).json({
-      center
+      center: response
     });
   } catch (err) {
     console.error("Get center by ID error:", err);

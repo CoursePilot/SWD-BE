@@ -51,11 +51,33 @@ async function getSubscriptionById(req, res) {
 // POST /subscriptions - Đăng ký gói mới (center chọn plan)
 async function createSubscription(req, res) {
   try {
-    const centerId = req.user.id;
+    const userId = req.user.id;
     const { planId, autoRenew = 0 } = req.body;
 
     if (!planId) {
       return res.status(400).json({ error: "planId là bắt buộc" });
+    }
+
+    // Lấy center của user
+    const Center = require("../models/center.model");
+    const center = await Center.findByUserId(userId);
+    
+    if (!center) {
+      return res.status(404).json({ 
+        error: "Bạn chưa có trung tâm. Vui lòng submit center request trước." 
+      });
+    }
+
+    if (center.status === 'pending') {
+      return res.status(400).json({ 
+        error: "Trung tâm của bạn đang chờ duyệt. Vui lòng đợi admin approve." 
+      });
+    }
+
+    if (center.status === 'rejected') {
+      return res.status(400).json({ 
+        error: "Trung tâm của bạn đã bị từ chối." 
+      });
     }
 
     const plan = await Plan.findById(planId);
@@ -70,7 +92,7 @@ async function createSubscription(req, res) {
     endAt.setUTCDate(endAt.getUTCDate() + Number(plan.durationDays));
 
     const id = await Subscription.create({
-      centerId,
+      centerId: center.id, // Sử dụng center.id, không phải user.id
       planId,
       startAt,
       endAt,

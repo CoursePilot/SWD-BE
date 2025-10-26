@@ -196,11 +196,96 @@ async function deleteCenter(id) {
   );
 }
 
+// Lấy center với thông tin subscription và quota
+async function findByIdWithSubscription(id) {
+  const [rows] = await db.query(
+    `SELECT 
+      c.id, 
+      c.user_id AS userId, 
+      c.name, 
+      c.logo_url AS logoUrl, 
+      c.phone, 
+      c.address, 
+      c.website_url AS websiteUrl, 
+      c.verified, 
+      c.status, 
+      c.description, 
+      c.created_at AS createdAt, 
+      c.updated_at AS updatedAt,
+      u.name AS userName,
+      u.email AS userEmail,
+      s.id AS subscriptionId,
+      s.status AS subscriptionStatus,
+      s.start_at AS subscriptionStartAt,
+      s.end_at AS subscriptionEndAt,
+      s.lead_used AS leadUsed,
+      s.post_used AS postUsed,
+      p.id AS planId,
+      p.name AS planName,
+      p.price AS planPrice,
+      p.duration_days AS planDurationDays,
+      p.lead_quota AS leadQuota,
+      p.post_quota AS postQuota,
+      (p.lead_quota - s.lead_used) AS leadRemaining,
+      (p.post_quota - s.post_used) AS postRemaining
+    FROM centers c 
+    LEFT JOIN users u ON c.user_id = u.id 
+    LEFT JOIN subscriptions s ON c.id = s.center_id AND s.status = 'active' AND s.is_deleted = 0
+    LEFT JOIN plans p ON s.plan_id = p.id
+    WHERE c.id = ? AND c.is_deleted = 0 
+    LIMIT 1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+// Lấy center theo user_id với thông tin subscription và quota
+async function findByUserIdWithSubscription(userId) {
+  const [rows] = await db.query(
+    `SELECT 
+      c.id, 
+      c.user_id AS userId, 
+      c.name, 
+      c.logo_url AS logoUrl, 
+      c.phone, 
+      c.address, 
+      c.website_url AS websiteUrl, 
+      c.verified, 
+      c.status, 
+      c.description, 
+      c.created_at AS createdAt, 
+      c.updated_at AS updatedAt,
+      s.id AS subscriptionId,
+      s.status AS subscriptionStatus,
+      s.start_at AS subscriptionStartAt,
+      s.end_at AS subscriptionEndAt,
+      s.lead_used AS leadUsed,
+      s.post_used AS postUsed,
+      p.id AS planId,
+      p.name AS planName,
+      p.price AS planPrice,
+      p.duration_days AS planDurationDays,
+      p.lead_quota AS leadQuota,
+      p.post_quota AS postQuota,
+      (p.lead_quota - s.lead_used) AS leadRemaining,
+      (p.post_quota - s.post_used) AS postRemaining
+    FROM centers c 
+    LEFT JOIN subscriptions s ON c.id = s.center_id AND s.status = 'active' AND s.is_deleted = 0
+    LEFT JOIN plans p ON s.plan_id = p.id
+    WHERE c.user_id = ? AND c.is_deleted = 0 
+    LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   createCenterRequest,
   findByUserId,
   findById,
   findByIdWithUser,
+  findByIdWithSubscription,
+  findByUserIdWithSubscription,
   findAllWithUser,
   hasPendingRequest,
   updateStatus,

@@ -493,16 +493,55 @@ router.delete('/admin/:id',
  *                       type: string
  *                     address:
  *                       type: string
- *                     website_url:
+ *                     websiteUrl:
  *                       type: string
  *                     description:
  *                       type: string
- *                     logo_url:
+ *                     logoUrl:
  *                       type: string
  *                     status:
  *                       type: string
  *                     verified:
  *                       type: boolean
+ *                     subscription:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                         startAt:
+ *                           type: string
+ *                           format: date-time
+ *                         endAt:
+ *                           type: string
+ *                           format: date-time
+ *                         leadUsed:
+ *                           type: integer
+ *                         postUsed:
+ *                           type: integer
+ *                         leadRemaining:
+ *                           type: integer
+ *                           description: Số lead còn lại
+ *                         postRemaining:
+ *                           type: integer
+ *                           description: Số post còn lại
+ *                         plan:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             price:
+ *                               type: number
+ *                             durationDays:
+ *                               type: integer
+ *                             leadQuota:
+ *                               type: integer
+ *                             postQuota:
+ *                               type: integer
  *       404:
  *         description: Bạn chưa phải là trung tâm
  *       401:
@@ -700,18 +739,65 @@ router.get('/',
  *                       type: string
  *                     address:
  *                       type: string
- *                     website_url:
+ *                     websiteUrl:
  *                       type: string
  *                     description:
  *                       type: string
- *                     logo_url:
+ *                     logoUrl:
  *                       type: string
  *                     status:
  *                       type: string
  *                     verified:
  *                       type: boolean
- *                     created_at:
+ *                     userName:
  *                       type: string
+ *                     userEmail:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     subscription:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Thông tin gói subscription hiện tại (nếu có)
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                         startAt:
+ *                           type: string
+ *                           format: date-time
+ *                         endAt:
+ *                           type: string
+ *                           format: date-time
+ *                         leadUsed:
+ *                           type: integer
+ *                           description: Số lead đã sử dụng
+ *                         postUsed:
+ *                           type: integer
+ *                           description: Số post đã sử dụng
+ *                         leadRemaining:
+ *                           type: integer
+ *                           description: Số lead còn lại
+ *                         postRemaining:
+ *                           type: integer
+ *                           description: Số post còn lại
+ *                         plan:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             price:
+ *                               type: number
+ *                             durationDays:
+ *                               type: integer
+ *                             leadQuota:
+ *                               type: integer
+ *                             postQuota:
+ *                               type: integer
  *       404:
  *         description: Không tìm thấy trung tâm
  */
