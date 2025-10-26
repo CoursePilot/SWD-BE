@@ -271,6 +271,7 @@ router.delete('/:leadId', leadController.deleteLead);
  * /api/v1/leads/center/{centerId}:
  *   get:
  *     summary: Lấy leads theo center
+ *     description: Lấy danh sách leads của center với filter theo course (optional)
  *     tags: [Leads]
  *     parameters:
  *       - in: path
@@ -278,23 +279,98 @@ router.delete('/:leadId', leadController.deleteLead);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *         description: ID của center
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Số trang
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
+ *         description: Số lượng items per page
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [new, forwarded, on_hold, invalid]
+ *         description: Lọc theo trạng thái
+ *       - in: query
+ *         name: courseId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Lọc theo course ID (optional)
  *     responses:
  *       200:
  *         description: Danh sách leads theo center
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 centerId:
+ *                   type: string
+ *                 courseId:
+ *                   type: string
+ *                   nullable: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       courseId:
+ *                         type: string
+ *                       courseTitle:
+ *                         type: string
+ *                         description: Tên khóa học
+ *                       courseSummary:
+ *                         type: string
+ *                         description: Tóm tắt khóa học
+ *                       studentId:
+ *                         type: string
+ *                       studentName:
+ *                         type: string
+ *                         description: Tên học viên
+ *                       studentEmail:
+ *                         type: string
+ *                         description: Email học viên
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       note:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
  */
 router.get('/center/:centerId', leadController.getLeadsByCenter);
 

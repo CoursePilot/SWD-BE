@@ -279,10 +279,11 @@ async function deleteLead(req, res) {
 async function getLeadsByCenter(req, res) {
   try {
     const { centerId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, status, courseId } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = "WHERE l.center_id = ? AND l.is_deleted = 0";
+    // Leads không có center_id trực tiếp, phải JOIN qua courses
+    let whereClause = "WHERE c.center_id = ? AND l.is_deleted = 0";
     const params = [centerId];
 
     if (status) {
@@ -290,10 +291,24 @@ async function getLeadsByCenter(req, res) {
       params.push(status);
     }
 
+    if (courseId) {
+      whereClause += " AND l.course_id = ?";
+      params.push(courseId);
+    }
+
     params.push(parseInt(limit), offset);
 
     const [rows] = await db.query(`
-      SELECT l.* FROM leads l
+      SELECT 
+        l.*,
+        c.title AS courseTitle,
+        c.summary AS courseSummary,
+        c.center_id AS centerId,
+        u.name AS studentName,
+        u.email AS studentEmail
+      FROM leads l
+      INNER JOIN courses c ON l.course_id = c.id
+      LEFT JOIN users u ON l.student_id = u.id
       ${whereClause}
       ORDER BY l.created_at DESC
       LIMIT ? OFFSET ?
@@ -301,7 +316,10 @@ async function getLeadsByCenter(req, res) {
 
     const countParams = params.slice(0, -2);
     const [countRows] = await db.query(`
-      SELECT COUNT(*) AS total FROM leads l ${whereClause}
+      SELECT COUNT(*) AS total 
+      FROM leads l
+      INNER JOIN courses c ON l.course_id = c.id
+      ${whereClause}
     `, countParams);
 
     const total = countRows[0].total;
@@ -310,6 +328,7 @@ async function getLeadsByCenter(req, res) {
     res.json({
       message: "Lấy danh sách leads theo center thành công",
       centerId,
+      courseId: courseId || null,
       data: rows,
       pagination: {
         page: parseInt(page),
