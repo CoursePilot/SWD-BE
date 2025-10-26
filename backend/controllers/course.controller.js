@@ -458,7 +458,7 @@ async function approveCourse(req, res) {
     }
 
     // Update course status
-    await Course.update(courseId, {
+    await Course.updateById(courseId, {
       status: 'approved',
       adminNote: adminNote || null,
       approvedAt: new Date()
@@ -497,7 +497,7 @@ async function rejectCourse(req, res) {
     }
 
     // Update course status
-    await Course.update(courseId, {
+    await Course.updateById(courseId, {
       status: 'rejected',
       adminNote: adminNote || null,
       rejectedAt: new Date()

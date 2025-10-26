@@ -244,7 +244,6 @@ async function updateById(id, { centerId, categoryId, title, summary, imageUrl, 
     throw new Error("Không có trường nào để cập nhật");
   }
 
-  fields.push("updated_at = UTC_TIMESTAMP()");
   params.push(id);
 
   const [result] = await db.query(
