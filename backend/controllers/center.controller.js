@@ -272,7 +272,7 @@ async function getCenterRequestById(req, res) {
   try {
     const { id } = req.params;
     
-    const request = await Center.findById(id);
+    const request = await Center.findByIdWithUser(id);
     if (!request) {
       return res.status(404).json({
         error: "Không tìm thấy đơn xin làm trung tâm"
@@ -456,7 +456,7 @@ async function getCenterById(req, res) {
   try {
     const { id } = req.params;
     
-    const center = await Center.findById(id);
+    const center = await Center.findByIdWithUser(id);
     if (!center) {
       return res.status(404).json({
         error: "Không tìm thấy trung tâm"

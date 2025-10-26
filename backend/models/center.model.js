@@ -29,6 +29,33 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+// Lấy center theo id với thông tin user
+async function findByIdWithUser(id) {
+  const [rows] = await db.query(
+    `SELECT 
+      c.id, 
+      c.user_id AS userId, 
+      c.name, 
+      c.logo_url AS logoUrl, 
+      c.phone, 
+      c.address, 
+      c.website_url AS websiteUrl, 
+      c.verified, 
+      c.status, 
+      c.description, 
+      c.created_at AS createdAt, 
+      c.updated_at AS updatedAt,
+      u.name AS userName,
+      u.email AS userEmail
+    FROM centers c 
+    LEFT JOIN users u ON c.user_id = u.id 
+    WHERE c.id = ? AND c.is_deleted = 0 
+    LIMIT 1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
 // Lấy tất cả center với thông tin user
 async function findAllWithUser({ page = 1, limit = 10, status = null, verified = null }) {
   const offset = (page - 1) * limit;
@@ -173,6 +200,7 @@ module.exports = {
   createCenterRequest,
   findByUserId,
   findById,
+  findByIdWithUser,
   findAllWithUser,
   hasPendingRequest,
   updateStatus,
