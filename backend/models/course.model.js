@@ -257,7 +257,7 @@ async function updateById(id, { centerId, categoryId, title, summary, imageUrl, 
 // Xóa mềm course
 async function deleteById(id) {
   const [result] = await db.query(
-    "UPDATE courses SET is_deleted = 1, updated_at = UTC_TIMESTAMP() WHERE id = ? AND is_deleted = 0",
+    "UPDATE courses SET is_deleted = 1 WHERE id = ? AND is_deleted = 0",
     [id]
   );
   return result.affectedRows > 0;

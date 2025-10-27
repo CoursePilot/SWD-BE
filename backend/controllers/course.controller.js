@@ -205,6 +205,14 @@ async function updateCourse(req, res) {
     const { centerId, categoryId, title, summary, content, priceMin, priceMax, modality, status } = req.body;
     const userId = req.user.id;
 
+    // Kiểm tra course tồn tại TRƯỚC KHI xử lý upload
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        error: "Khóa học không tồn tại"
+      });
+    }
+
     // Xử lý image upload nếu có
     let imageUrl = null;
     if (req.files && req.files.image && req.files.image[0]) {
@@ -253,22 +261,6 @@ async function updateCourse(req, res) {
       }
     }
 
-    // Kiểm tra course tồn tại
-    const course = await Course.findById(id);
-    if (!course) {
-      return res.status(404).json({
-        error: "Khóa học không tồn tại"
-      });
-    }
-
-    // Kiểm tra quyền cập nhật
-    const center = await Center.findById(course.centerId);
-    if (req.user.role !== 3 && center.userId !== userId) {
-      return res.status(403).json({
-        error: "Bạn không có quyền cập nhật khóa học này"
-      });
-    }
-
     // Nếu thay đổi centerId, kiểm tra center mới
     if (centerId && centerId !== course.centerId) {
       const newCenter = await Center.findById(centerId);
@@ -278,7 +270,10 @@ async function updateCourse(req, res) {
         });
       }
 
-      if (req.user.role !== 3 && newCenter.userId !== userId) {
+      const isAdmin = req.user.role === 3 || req.user.role?.toLowerCase() === 'admin';
+      const isNewCenterOwner = newCenter.userId === userId;
+      
+      if (!isAdmin && !isNewCenterOwner) {
         return res.status(403).json({
           error: "Bạn không có quyền chuyển khóa học sang trung tâm này"
         });
@@ -330,14 +325,6 @@ async function deleteCourse(req, res) {
     if (!course) {
       return res.status(404).json({
         error: "Khóa học không tồn tại"
-      });
-    }
-
-    // Kiểm tra quyền xóa
-    const center = await Center.findById(course.centerId);
-    if (req.user.role !== 3 && center.userId !== userId) {
-      return res.status(403).json({
-        error: "Bạn không có quyền xóa khóa học này"
       });
     }
 

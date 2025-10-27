@@ -238,6 +238,8 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *     summary: Tạo khóa học mới
  *     description: Tạo khóa học mới (chỉ admin hoặc owner của center)
  *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -311,6 +313,8 @@ router.get('/center/:centerId', courseController.getCoursesByCenter);
  *         description: Trung tâm không tồn tại
  */
 router.post('/', 
+  auth,
+  isAdminOrEmployee,
   upload.fields([{ name: 'image', maxCount: 1 }]),
   handleMulterError,
   validateCreateCourse,
@@ -325,6 +329,8 @@ router.post('/',
  *     summary: Cập nhật khóa học
  *     description: Cập nhật thông tin khóa học
  *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -396,6 +402,8 @@ router.post('/',
  *         description: Khóa học không tồn tại
  */
 router.put('/:id', 
+  auth,
+  isAdminOrEmployee,
   upload.fields([{ name: 'image', maxCount: 1 }]),
   handleMulterError,
   validateUpdateCourse,
@@ -410,6 +418,8 @@ router.put('/:id',
  *     summary: Xóa khóa học
  *     description: Xóa khóa học (soft delete)
  *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -429,6 +439,8 @@ router.put('/:id',
  *         description: Khóa học không tồn tại
  */
 router.delete('/:id', 
+  auth,
+  isAdminOrEmployee,
   courseController.deleteCourse
 );
 
@@ -480,6 +492,8 @@ router.get('/my',
  *     summary: Admin approve course
  *     description: Admin phê duyệt course
  *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: courseId
@@ -500,7 +514,11 @@ router.get('/my',
  *       404:
  *         description: Course không tồn tại
  */
-router.post('/:courseId/approve', courseController.approveCourse);
+router.post('/:courseId/approve', 
+  auth,
+  isAdmin,
+  courseController.approveCourse
+);
 
 /**
  * @swagger
@@ -509,6 +527,8 @@ router.post('/:courseId/approve', courseController.approveCourse);
  *     summary: Admin reject course
  *     description: Admin từ chối course
  *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: courseId
@@ -532,6 +552,10 @@ router.post('/:courseId/approve', courseController.approveCourse);
  *       404:
  *         description: Course không tồn tại
  */
-router.post('/:courseId/reject', courseController.rejectCourse);
+router.post('/:courseId/reject', 
+  auth,
+  isAdmin,
+  courseController.rejectCourse
+);
 
 module.exports = router;
