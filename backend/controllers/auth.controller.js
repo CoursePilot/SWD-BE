@@ -52,20 +52,44 @@ async function googleMobileLogin(req, res) {
     // Check if user exists by Google ID
     let user = await User.findByGoogleId(googleId);
 
-    // If not found, check by email to prevent duplicates
+    // If not found, check by email to handle existing accounts
     if (!user && email) {
       const existingByEmail = await User.findByEmail(email);
       if (existingByEmail) {
-        return res.status(400).json({ 
-          error: "Email is already registered by another account" 
-        });
+        // If existing user doesn't have google_id, link the accounts
+        if (!existingByEmail.googleId) {
+          const db = require('../config/db');
+          await db.query(
+            "UPDATE users SET google_id = ?, avatar_url = ? WHERE email = ? AND is_deleted = 0",
+            [googleId, avatarUrl, email]
+          );
+          user = { ...existingByEmail, googleId, avatarUrl };
+        } else {
+          return res.status(400).json({ 
+            error: "Email is already registered by another Google account" 
+          });
+        }
       }
     }
 
     // Create new user if not exists
     if (!user) {
-      const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
-      user = { id: newId, googleId, email, name, phone: null, avatarUrl };
+      try {
+        const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
+        user = { id: newId, googleId, email, name, phone: null, avatarUrl };
+      } catch (error) {
+        // Handle race condition - user might have been created by another request
+        if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
+          const existingUser = await User.findByEmail(email);
+          if (existingUser) {
+            user = existingUser;
+          } else {
+            return res.status(500).json({ error: "Internal server error" });
+          }
+        } else {
+          return res.status(500).json({ error: "Internal server error" });
+        }
+      }
     } else if (avatarUrl && user.avatarUrl !== avatarUrl) {
       // Update avatar if changed
       await User.updateAvatar(user.id, avatarUrl);

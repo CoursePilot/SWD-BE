@@ -20,11 +20,31 @@ async function findByEmail(email) {
 
 async function createGoogleUser({ googleId, email, name, avatarUrl, phone = null, role = 1, emailVerified = 1 }) {
   const id = uuidv4();
-  await db.query(
-    "INSERT INTO users (id, google_id, email, name, phone, avatar_url, role, email_verified, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP())",
-    [id, googleId, email, name, phone, avatarUrl, role, emailVerified]
-  );
-  return id;
+  
+  try {
+    await db.query(
+      "INSERT INTO users (id, google_id, email, name, phone, avatar_url, role, email_verified, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP())",
+      [id, googleId, email, name, phone, avatarUrl, role, emailVerified]
+    );
+    return id;
+  } catch (error) {
+    // Handle duplicate email error
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
+      // Email already exists, try to find the existing user
+      const existingUser = await findByEmail(email);
+      if (existingUser) {
+        // If existing user doesn't have google_id, update it
+        if (!existingUser.googleId) {
+          await db.query(
+            "UPDATE users SET google_id = ?, avatar_url = ? WHERE email = ? AND is_deleted = 0",
+            [googleId, avatarUrl, email]
+          );
+        }
+        return existingUser.id;
+      }
+    }
+    throw error; // Re-throw other errors
+  }
 }
 
 async function updateAvatar(userId, avatarUrl) {
