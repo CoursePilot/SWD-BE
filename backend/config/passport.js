@@ -2,6 +2,7 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 require("dotenv").config();
 const User = require("../models/user.model");
+const db = require("./db");
 
 const serverOrigin = process.env.SERVER_ORIGIN || "https://studyportal.up.railway.app";
 
@@ -22,19 +23,42 @@ passport.use(
         // 1) Try by googleId
         let user = await User.findByGoogleId(googleId);
 
-        // 2) If not found, try by email to prevent duplicates
+        // 2) If not found, try by email to handle existing accounts
         if (!user && email) {
           const existingByEmail = await User.findByEmail(email);
           if (existingByEmail) {
-            // Email already exists for another account; treat as login failure or merge logic
-            return done(null, false, { message: "Email is already registered by another account" });
+            // If existing user doesn't have google_id, link the accounts
+            if (!existingByEmail.googleId) {
+              await db.query(
+                "UPDATE users SET google_id = ?, avatar_url = ? WHERE email = ? AND is_deleted = 0",
+                [googleId, avatarUrl, email]
+              );
+              user = { ...existingByEmail, googleId, avatarUrl };
+            } else {
+              // Email already exists with different google_id
+              return done(null, false, { message: "Email is already registered by another Google account" });
+            }
           }
         }
 
         // 3) Create new user if not exists
         if (!user) {
-          const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
-          user = { id: newId, googleId, email, name, phone: null, avatarUrl };
+          try {
+            const newId = await User.createGoogleUser({ googleId, email, name, avatarUrl });
+            user = { id: newId, googleId, email, name, phone: null, avatarUrl };
+          } catch (error) {
+            // Handle race condition - user might have been created by another request
+            if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
+              const existingUser = await User.findByEmail(email);
+              if (existingUser) {
+                user = existingUser;
+              } else {
+                return done(error, null);
+              }
+            } else {
+              return done(error, null);
+            }
+          }
         } else if (avatarUrl && user.avatarUrl !== avatarUrl) {
           // 4) Update avatar if changed
           await User.updateAvatar(user.id, avatarUrl);
