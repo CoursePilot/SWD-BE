@@ -27,8 +27,6 @@ async function findAllByCenter(centerId, { page = 1, limit = 10, status = null }
       s.auto_renew AS autoRenew,
       s.cancelled_at AS cancelledAt,
       s.reason_cancel AS reasonCancel,
-      s.created_at AS createdAt,
-      s.updated_at AS updatedAt,
       p.name AS planName,
       p.price AS planPrice,
       p.duration_days AS planDurationDays,
@@ -37,7 +35,7 @@ async function findAllByCenter(centerId, { page = 1, limit = 10, status = null }
     FROM subscriptions s
     LEFT JOIN plans p ON p.id = s.plan_id
     WHERE ${whereClause}
-    ORDER BY s.created_at DESC
+    ORDER BY s.start_at DESC
     LIMIT ? OFFSET ?`,
     params
   );
@@ -72,8 +70,6 @@ async function findById(id) {
       s.cancelled_at AS cancelledAt,
       s.reason_cancel AS reasonCancel,
       s.is_deleted AS isDeleted,
-      s.created_at AS createdAt,
-      s.updated_at AS updatedAt,
       p.name AS planName,
       p.price AS planPrice,
       p.duration_days AS planDurationDays,
