@@ -71,21 +71,26 @@ class GeminiService {
   // sẽ dùng để tính cosine similarity nhanh bằng SQL
 
   // 💬 Sinh phản hồi hội thoại
-  async getChatWithContext(userMessage, retrievedContext, conversationHistory = []) {
+  async getChatWithContext(userMessage, retrievedContext, conversationHistory = [], options = {}) {
     // Fallback response nếu Gemini không hoạt động
     if (!this.chatModel) {
       return this.getFallbackResponse(userMessage, retrievedContext);
     }
 
-    const systemPrompt = `Bạn là trợ lý tư vấn trung tâm học tập thân thiện và chính xác.
+    const language = (options.language || 'vi').toString().trim();
+    const purposeLine = options.purpose ? `MỤC TIÊU HỘI THOẠI: ${options.purpose}\n` : '';
 
-THÔNG TIN TỪ CƠ SỞ DỮ LIỆU:
+    const systemPrompt = `Bạn là trợ lý tư vấn khóa học và trung tâm đào tạo, thân thiện và chính xác.
+
+${purposeLine}NGÔN NGỮ TRẢ LỜI: ${language}
+
+NGỮ CẢNH/TRÍCH XUẤT TỪ CSDL:
 ${retrievedContext}
 
 HƯỚNG DẪN:
-- Chỉ dựa vào thông tin trên để trả lời
-- Nếu không có dữ liệu liên quan, nói rằng bạn chưa có thông tin
-- Trả lời ngắn gọn, bằng tiếng Việt, thân thiện.`;
+- Chỉ dựa vào ngữ cảnh trên và kiến thức truy xuất để trả lời.
+- Nếu không có dữ liệu liên quan, nói rằng bạn chưa có thông tin phù hợp.
+- Trả lời ngắn gọn, rõ ràng, đúng ngôn ngữ đã chỉ định.`;
 
     const messages = [
       { role: 'user', content: systemPrompt },

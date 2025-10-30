@@ -54,7 +54,7 @@ class ChatController {
       }
 
       const [sessions] = await pool.execute(
-        "SELECT session_id FROM chat_sessions WHERE session_id = ?",
+        "SELECT session_id, context FROM chat_sessions WHERE session_id = ?",
         [session_id]
       );
 
@@ -63,6 +63,14 @@ class ChatController {
           success: false,
           error: "Session không tồn tại",
         });
+      }
+
+      // Load session context (purpose, language, ...)
+      let sessionContext = {};
+      try {
+        sessionContext = sessions[0].context ? JSON.parse(sessions[0].context) : {};
+      } catch (_) {
+        sessionContext = {};
       }
 
       await pool.execute(
@@ -88,7 +96,15 @@ class ChatController {
       let retrievedChunks = [];
       let context = "";
       try {
-        retrievedChunks = await ragService.searchKnowledgeBase(message_text, 3);
+        // Heuristic: prefer courses when user asks về "khóa/khóa học/lập trình/..."
+        const textForIntent = `${(sessionContext.purpose || '')} ${message_text}`.toLowerCase();
+        const preferCourse = /(khóa|khoá|khóa học|khoá học|course|lập trình|web|frontend|backend|data|ielts|toeic)/.test(textForIntent);
+
+        retrievedChunks = await ragService.searchKnowledgeBase(
+          message_text,
+          12,
+          { threshold: 0.5, preferSourceType: preferCourse ? 'course' : undefined }
+        );
         context = ragService.formatRetrievedContext(retrievedChunks);
       } catch (ragError) {
         console.warn("Error when querying Supabase:", ragError.message);
@@ -98,7 +114,11 @@ class ChatController {
       const botResponse = await geminiService.getChatWithContext(
         message_text,
         context,
-        conversationHistory
+        conversationHistory,
+        {
+          purpose: sessionContext.purpose || null,
+          language: sessionContext.language || "vi",
+        }
       );
 
       await pool.execute(

@@ -41,6 +41,8 @@ app.use("/api/v1/schedules", require("./routes/schedule.route"));
 app.use("/api/v1/follows", require("./routes/follow.route"));
 app.use("/api/v1/payments", require("./routes/payment.route"));
 app.use("/api/v1/leads", require("./routes/lead.route"));
+app.use("/api/v1/chat", require("./routes/chat.route"));
+app.use("/api/v1/knowledge", require("./routes/knowledge.route"));
 
 // Root route for convenience
 app.get("/", (req, res) => {
