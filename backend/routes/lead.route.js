@@ -34,7 +34,7 @@ const leadController = require('../controllers/lead.controller');
  *           format: date-time
  *         status:
  *           type: string
- *           enum: [new, forwarded, on_hold, invalid]
+ *           enum: [new, assigned, contacted, qualified, disqualified, enrolled, lost]
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -224,20 +224,34 @@ router.get('/:leadId', leadController.getLeadById);
  *           schema:
  *             type: object
  *             properties:
- *               customerName:
+ *               courseId:
  *                 type: string
- *               customerPhone:
+ *                 format: uuid
+ *                 description: ID của course
+ *               scheduleId:
  *                 type: string
- *               customerEmail:
+ *                 format: uuid
+ *                 description: ID của schedule
+ *               studentId:
  *                 type: string
- *               courseInterest:
+ *                 format: uuid
+ *                 description: ID của student
+ *               name:
  *                 type: string
- *               source:
+ *                 description: Tên khách hàng
+ *               phone:
  *                 type: string
- *               notes:
+ *                 description: Số điện thoại
+ *               email:
  *                 type: string
+ *                 description: Email
+ *               note:
+ *                 type: string
+ *                 description: Ghi chú
  *               status:
  *                 type: string
+ *                 enum: [new, assigned, contacted, qualified, disqualified, enrolled, lost]
+ *                 description: Trạng thái lead
  *     responses:
  *       200:
  *         description: Cập nhật thành công
@@ -297,7 +311,7 @@ router.delete('/:leadId', leadController.deleteLead);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [new, forwarded, on_hold, invalid]
+ *           enum: [new, assigned, contacted, qualified, disqualified, enrolled, lost]
  *         description: Lọc theo trạng thái
  *       - in: query
  *         name: courseId

@@ -207,15 +207,13 @@ async function getLeadById(req, res) {
 async function updateLead(req, res) {
   try {
     const { leadId } = req.params;
-    const { customerName, customerPhone, customerEmail, courseInterest, source, notes, status } = req.body;
+    const { courseId, scheduleId, studentId, name, phone, email, note, status } = req.body;
 
     const [result] = await db.query(`
       UPDATE leads 
-      SET customer_name = ?, customer_phone = ?, customer_email = ?, 
-          course_interest = ?, source = ?, notes = ?, status = ?,
-          updated_at = NOW()
-      WHERE id = ? AND is_deleted = 0
-    `, [customerName, customerPhone, customerEmail, courseInterest, source, notes, status, leadId]);
+      SET course_id = ?, schedule_id = ?, student_id = ?, name = ?, phone = ?, email = ?, note = ?, status = ?
+      WHERE id = ?
+    `, [courseId, scheduleId, studentId, name, phone, email, note, status, leadId]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -227,10 +225,14 @@ async function updateLead(req, res) {
     const [rows] = await db.query(`
       SELECT 
         l.*,
-        c.name AS centerName
+        c.title AS courseTitle,
+        ce.name AS centerName,
+        u.name AS studentName
       FROM leads l
-      LEFT JOIN centers c ON l.center_id = c.id
-      WHERE l.id = ? AND l.is_deleted = 0
+      LEFT JOIN courses c ON l.course_id = c.id
+      LEFT JOIN centers ce ON c.center_id = ce.id
+      LEFT JOIN users u ON l.student_id = u.id
+      WHERE l.id = ?
     `, [leadId]);
 
     res.json({
