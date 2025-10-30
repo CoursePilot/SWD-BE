@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const leadController = require('../controllers/lead.controller');
+const { upload, handleMulterError } = require('../middlewares/upload.middleware');
 
 /**
  * @swagger
@@ -220,7 +221,7 @@ router.get('/:leadId', leadController.getLeadById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -258,7 +259,7 @@ router.get('/:leadId', leadController.getLeadById);
  *       404:
  *         description: Lead không tồn tại
  */
-router.put('/:leadId', leadController.updateLead);
+router.put('/:leadId', upload.none(), handleMulterError, leadController.updateLead);
 
 /**
  * @swagger
