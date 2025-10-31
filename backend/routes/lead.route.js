@@ -389,4 +389,122 @@ router.delete('/:leadId', leadController.deleteLead);
  */
 router.get('/center/:centerId', leadController.getLeadsByCenter);
 
+/**
+ * @swagger
+ * /api/v1/leads/course/{courseId}:
+ *   get:
+ *     summary: Lấy danh sách leads theo course
+ *     description: Lấy danh sách leads thuộc một course cụ thể với phân trang và filter
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của course
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [new, assigned, contacted, qualified, disqualified, enrolled, lost]
+ *         description: Lọc theo status
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách leads thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 courseId:
+ *                   type: string
+ *                 courseTitle:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       courseId:
+ *                         type: string
+ *                       courseTitle:
+ *                         type: string
+ *                       courseSummary:
+ *                         type: string
+ *                       centerId:
+ *                         type: string
+ *                       centerName:
+ *                         type: string
+ *                       scheduleId:
+ *                         type: string
+ *                       scheduleStartDate:
+ *                         type: string
+ *                         format: date-time
+ *                       scheduleEndDate:
+ *                         type: string
+ *                         format: date-time
+ *                       studentId:
+ *                         type: string
+ *                       studentName:
+ *                         type: string
+ *                       studentEmail:
+ *                         type: string
+ *                       studentPhone:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       note:
+ *                         type: string
+ *                       consentAt:
+ *                         type: string
+ *                         format: date-time
+ *                       status:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *       404:
+ *         description: Course không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/course/:courseId', leadController.getLeadsByCourse);
+
 module.exports = router;

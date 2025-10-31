@@ -11,7 +11,8 @@ module.exports = {
   getLeadById,
   updateLead,
   deleteLead,
-  getLeadsByCenter
+  getLeadsByCenter,
+  getLeadsByCourse
 };
 
 // Tạo lead mới
@@ -346,6 +347,99 @@ async function getLeadsByCenter(req, res) {
     console.error("Get leads by center error:", error);
     res.status(500).json({
       error: "Lỗi server khi lấy danh sách leads theo center"
+    });
+  }
+}
+
+// Lấy leads theo courseId
+async function getLeadsByCourse(req, res) {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 10, status } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Kiểm tra course tồn tại
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        error: "Course không tồn tại"
+      });
+    }
+
+    // Build where clause
+    let whereClause = "WHERE l.course_id = ? AND l.is_deleted = 0";
+    const params = [courseId];
+
+    if (status) {
+      whereClause += " AND l.status = ?";
+      params.push(status);
+    }
+
+    params.push(parseInt(limit), offset);
+
+    // Get leads
+    const [rows] = await db.query(`
+      SELECT 
+        l.id,
+        l.course_id AS courseId,
+        l.schedule_id AS scheduleId,
+        l.student_id AS studentId,
+        l.name,
+        l.email,
+        l.phone,
+        l.note,
+        l.consent_at AS consentAt,
+        l.status,
+        l.created_at AS createdAt,
+        c.title AS courseTitle,
+        c.summary AS courseSummary,
+        c.center_id AS centerId,
+        ce.name AS centerName,
+        u.name AS studentName,
+        u.email AS studentEmail,
+        u.phone AS studentPhone,
+        s.start_date AS scheduleStartDate,
+        s.end_date AS scheduleEndDate
+      FROM leads l
+      INNER JOIN courses c ON l.course_id = c.id
+      LEFT JOIN centers ce ON c.center_id = ce.id
+      LEFT JOIN users u ON l.student_id = u.id
+      LEFT JOIN schedules s ON l.schedule_id = s.id
+      ${whereClause}
+      ORDER BY l.created_at DESC
+      LIMIT ? OFFSET ?
+    `, params);
+
+    // Count total
+    const countParams = params.slice(0, -2);
+    const [countRows] = await db.query(`
+      SELECT COUNT(*) AS total 
+      FROM leads l
+      ${whereClause}
+    `, countParams);
+
+    const total = countRows[0].total;
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      message: "Lấy danh sách leads theo course thành công",
+      courseId,
+      courseTitle: course.title,
+      data: rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error("Get leads by course error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách leads theo course"
     });
   }
 }
