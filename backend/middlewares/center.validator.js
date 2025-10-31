@@ -63,38 +63,38 @@ const validateCenterRequest = [
 // Validation rules cho center update form
 const validateCenterUpdate = [
   body('name')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .isLength({ min: 2, max: 100 })
     .withMessage('Tên trung tâm phải có từ 2-100 ký tự')
     .trim(),
   
   body('phone')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .matches(/^[0-9+\-\s()]+$/)
     .withMessage('Số điện thoại không hợp lệ')
     .isLength({ min: 10, max: 15 })
     .withMessage('Số điện thoại phải có từ 10-15 ký tự'),
   
   body('address')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .isLength({ min: 10, max: 200 })
     .withMessage('Địa chỉ phải có từ 10-200 ký tự')
     .trim(),
   
   body('websiteUrl')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .isURL()
     .withMessage('URL website không hợp lệ')
     .trim(),
   
   body('description')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .isLength({ min: 20, max: 1000 })
     .withMessage('Mô tả phải có từ 20-1000 ký tự')
     .trim(),
   
   body('logoUrl')
-    .optional()
+    .optional({ checkFalsy: true, nullable: true })
     .isURL()
     .withMessage('URL logo không hợp lệ')
     .trim(),

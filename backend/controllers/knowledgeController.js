@@ -78,7 +78,12 @@ class KnowledgeController {
         });
       }
 
-      const results = await ragService.searchKnowledgeBase(query, limit || 5);
+      const preferCourse = /(khóa|khoá|khóa học|khoá học|course|lập trình|web|frontend|backend|data)/i.test(query || '');
+      const results = await ragService.searchKnowledgeBase(
+        query,
+        Math.max(5, Math.min(20, Number(limit) || 8)),
+        { threshold: 0.5, preferSourceType: preferCourse ? 'course' : undefined }
+      );
 
       res.json({
         success: true,

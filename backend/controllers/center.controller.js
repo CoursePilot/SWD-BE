@@ -124,6 +124,9 @@ async function updateCenterRequest(req, res) {
     const userId = req.user.id;
     const updates = req.body;
 
+    // Remove logo from body updates (we'll handle file separately)
+    delete updates.logo;
+
     // Lấy request hiện tại
     const currentRequest = await Center.findByUserId(userId);
     if (!currentRequest) {
@@ -190,8 +193,42 @@ async function updateCenterRequest(req, res) {
       }
     }
 
+    // Define allowed update fields
+    const allowedUpdates = ["name", "phone", "address", "websiteUrl", "description", "logoUrl"];
+
+    // Filter out empty values but allow updates even if some fields are empty
+    const filteredUpdates = {};
+    Object.keys(updates).forEach((key) => {
+      if (
+        updates[key] !== undefined &&
+        updates[key] !== null &&
+        updates[key] !== ""
+      ) {
+        filteredUpdates[key] = updates[key];
+      }
+    });
+
+    // Allow update even if no text fields are provided (logo upload might be the only change)
+    // Only check if both filteredUpdates and logo upload are empty
+    if (Object.keys(filteredUpdates).length === 0 && (!req.files || !req.files.logo)) {
+      return res.status(400).json({
+        error: "No valid updates provided. Please provide at least one field to update or upload a logo."
+      });
+    }
+
+    // Check if all update fields are allowed
+    const updatesKeys = Object.keys(filteredUpdates);
+    const isValidOperation = updatesKeys.every((key) =>
+      allowedUpdates.includes(key)
+    );
+    if (!isValidOperation) {
+      return res.status(400).json({
+        error: "Invalid update fields"
+      });
+    }
+
     // Cập nhật request
-    await Center.updateCenter(currentRequest.id, updates);
+    await Center.updateCenter(currentRequest.id, filteredUpdates);
     const updatedRequest = await Center.findById(currentRequest.id);
 
     return res.status(200).json({
@@ -392,11 +429,20 @@ async function updateCenter(req, res) {
     const userId = req.user.id;
     const updates = req.body;
 
+    // Remove logo from body updates (we'll handle file separately)
+    delete updates.logo;
+
     // Lấy center hiện tại
     const currentCenter = await Center.findByUserId(userId);
     if (!currentCenter || currentCenter.status === 'pending') {
       return res.status(404).json({
         error: "Bạn chưa phải là trung tâm"
+      });
+    }
+
+    if (currentCenter.isDeleted) {
+      return res.status(404).json({
+        error: "Trung tâm không tồn tại"
       });
     }
 
@@ -452,8 +498,42 @@ async function updateCenter(req, res) {
       }
     }
 
+    // Define allowed update fields
+    const allowedUpdates = ["name", "phone", "address", "websiteUrl", "description", "logoUrl"];
+
+    // Filter out empty values but allow updates even if some fields are empty
+    const filteredUpdates = {};
+    Object.keys(updates).forEach((key) => {
+      if (
+        updates[key] !== undefined &&
+        updates[key] !== null &&
+        updates[key] !== ""
+      ) {
+        filteredUpdates[key] = updates[key];
+      }
+    });
+
+    // Allow update even if no text fields are provided (logo upload might be the only change)
+    // Only check if both filteredUpdates and logo upload are empty
+    if (Object.keys(filteredUpdates).length === 0 && (!req.files || !req.files.logo)) {
+      return res.status(400).json({
+        error: "No valid updates provided. Please provide at least one field to update or upload a logo."
+      });
+    }
+
+    // Check if all update fields are allowed
+    const updatesKeys = Object.keys(filteredUpdates);
+    const isValidOperation = updatesKeys.every((key) =>
+      allowedUpdates.includes(key)
+    );
+    if (!isValidOperation) {
+      return res.status(400).json({
+        error: "Invalid update fields"
+      });
+    }
+
     // Cập nhật center
-    await Center.updateCenter(currentCenter.id, updates);
+    await Center.updateCenter(currentCenter.id, filteredUpdates);
     const updatedCenter = await Center.findById(currentCenter.id);
 
     return res.status(200).json({
