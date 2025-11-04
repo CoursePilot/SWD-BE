@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const { sendVerificationEmail, sendEmailOtp } = require("../services/emailService");
 const { v4: uuidv4 } = require("uuid");
 const { OAuth2Client } = require("google-auth-library");
+const admin = require("../config/firebase");
 
 const googleLogin = passport.authenticate("google", { 
   scope: ["profile", "email"] 
@@ -36,18 +37,19 @@ async function googleMobileLogin(req, res) {
       return res.status(400).json({ error: "Google ID token is required" });
     }
 
-    // Verify Google ID token bằng Android Client ID
-    const client = new OAuth2Client(process.env.GG_CLIENT_ID_ANDROID);
-    const ticket = await client.verifyIdToken({
-      idToken: idToken,
-      audience: process.env.GG_CLIENT_ID_ANDROID,
-    });
+    // Verify Firebase ID token using Firebase Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    
+    console.log("Firebase token verified successfully!");
+    console.log("  - uid:", decodedToken.uid);
+    console.log("  - email:", decodedToken.email);
+    console.log("  - email_verified:", decodedToken.email_verified);
 
-    const payload = ticket.getPayload();
-    const googleId = payload.sub;
-    const email = payload.email;
-    const name = payload.name;
-    const avatarUrl = payload.picture;
+    // Extract user info from Firebase token
+    const googleId = decodedToken.uid; // Firebase UID
+    const email = decodedToken.email;
+    const name = decodedToken.name || email?.split('@')[0] || 'User';
+    const avatarUrl = decodedToken.picture || null;
 
     // Check if user exists by Google ID
     let user = await User.findByGoogleId(googleId);
@@ -129,8 +131,11 @@ async function googleMobileLogin(req, res) {
 
   } catch (error) {
     console.error("Google mobile login error:", error);
+    console.error("Error details:", error.message);
+    console.error("GG_CLIENT_ID_ANDROID:", process.env.GG_CLIENT_ID_ANDROID);
     return res.status(401).json({ 
-      error: "Invalid Google ID token" 
+      error: "Invalid Google ID token",
+      details: error.message
     });
   }
 }
