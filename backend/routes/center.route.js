@@ -634,7 +634,7 @@ router.put('/my',
  * /api/v1/centers:
  *   get:
  *     summary: Lấy tất cả trung tâm (Public)
- *     description: Lấy danh sách tất cả trung tâm đã được duyệt (public API)
+ *     description: Lấy danh sách tất cả trung tâm đã được duyệt với search và filter (public API)
  *     tags: [Public - Centers]
  *     parameters:
  *       - in: query
@@ -649,6 +649,11 @@ router.put('/my',
  *           type: integer
  *           default: 10
  *         description: Số lượng item per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Tìm kiếm theo tên trung tâm
  *       - in: query
  *         name: status
  *         schema:

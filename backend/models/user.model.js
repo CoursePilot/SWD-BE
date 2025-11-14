@@ -78,6 +78,8 @@ module.exports = {
   deleteUser,
   createUser,
   emailExists,
+  countStudents,
+  getUserRegistrationByMonth
 };
 
 // Local auth: create user with email/password and profile
@@ -328,6 +330,46 @@ async function emailExists(email, excludeId = null) {
     params
   );
   return rows.length > 0;
+}
+
+// Đếm số lượng users (trừ users đã có center - role = 2)
+async function countStudents() {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) as total 
+     FROM users 
+     WHERE role = 1 AND is_deleted = 0`
+  );
+  return rows[0].total;
+}
+
+// Thống kê số lượng user đăng ký theo tháng
+async function getUserRegistrationByMonth(year) {
+  const [rows] = await db.query(
+    `SELECT 
+      MONTH(created_at) AS month,
+      COUNT(*) AS totalUsers
+    FROM users
+    WHERE YEAR(created_at) = ? AND is_deleted = 0
+    GROUP BY MONTH(created_at)
+    ORDER BY month ASC`,
+    [year]
+  );
+  
+  // Tạo array 12 tháng với giá trị mặc định 0
+  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    totalUsers: 0
+  }));
+  
+  // Fill data từ query
+  rows.forEach(row => {
+    monthlyData[row.month - 1] = {
+      month: row.month,
+      totalUsers: row.totalUsers
+    };
+  });
+  
+  return monthlyData;
 }
 
 

@@ -290,6 +290,42 @@ async function countByCenterId(centerId, status = null) {
   return rows[0].total;
 }
 
+// Đếm số lượng courses đang open (approved)
+async function countOpenCourses() {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) as total 
+     FROM courses 
+     WHERE status = 'approved' AND is_deleted = 0`
+  );
+  return rows[0].total;
+}
+
+// Lấy top courses theo số lượng đăng ký (leads)
+async function getTopCoursesBySubscriptions(limit = 10) {
+  const [rows] = await db.query(
+    `SELECT 
+      c.id,
+      c.title,
+      c.summary,
+      c.image_url AS imageUrl,
+      c.price_min AS priceMin,
+      c.price_max AS priceMax,
+      c.modality,
+      center.name AS centerName,
+      center.logo_url AS centerLogo,
+      COUNT(DISTINCT l.id) AS totalLeads
+    FROM courses c
+    LEFT JOIN leads l ON c.id = l.course_id
+    LEFT JOIN centers center ON c.center_id = center.id
+    WHERE c.status = 'approved' AND c.is_deleted = 0
+    GROUP BY c.id
+    ORDER BY totalLeads DESC
+    LIMIT ?`,
+    [limit]
+  );
+  return rows;
+}
+
 module.exports = {
   create,
   findById,
@@ -298,5 +334,7 @@ module.exports = {
   updateById,
   deleteById,
   existsForCenter,
-  countByCenterId
+  countByCenterId,
+  countOpenCourses,
+  getTopCoursesBySubscriptions
 };

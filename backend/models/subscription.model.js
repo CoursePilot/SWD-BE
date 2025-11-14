@@ -243,6 +243,42 @@ async function checkQuotaAvailable(centerId, type) {
   return { available: false, reason: 'Invalid quota type' };
 }
 
+// Thống kê doanh thu theo tháng
+async function getRevenueByMonth(year) {
+  const [rows] = await db.query(
+    `SELECT 
+      MONTH(s.start_at) AS month,
+      COUNT(DISTINCT s.id) AS totalSubscriptions,
+      SUM(p.price) AS totalRevenue
+    FROM subscriptions s
+    LEFT JOIN plans p ON s.plan_id = p.id
+    WHERE YEAR(s.start_at) = ? 
+      AND s.is_deleted = 0
+      AND s.status IN ('active', 'expired')
+    GROUP BY MONTH(s.start_at)
+    ORDER BY month ASC`,
+    [year]
+  );
+  
+  // Tạo array 12 tháng với giá trị mặc định 0
+  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    totalSubscriptions: 0,
+    totalRevenue: 0
+  }));
+  
+  // Fill data từ query
+  rows.forEach(row => {
+    monthlyData[row.month - 1] = {
+      month: row.month,
+      totalSubscriptions: row.totalSubscriptions,
+      totalRevenue: parseFloat(row.totalRevenue || 0)
+    };
+  });
+  
+  return monthlyData;
+}
+
 module.exports = {
   findAllByCenter,
   findById,
@@ -257,7 +293,8 @@ module.exports = {
   incrementPostUsed,
   checkAndUpdateExpired,
   checkAndCancelOverQuota,
-  checkQuotaAvailable
+  checkQuotaAvailable,
+  getRevenueByMonth
 };
 
 

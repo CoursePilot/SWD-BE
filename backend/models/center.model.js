@@ -57,7 +57,7 @@ async function findByIdWithUser(id) {
 }
 
 // Lấy tất cả center với thông tin user
-async function findAllWithUser({ page = 1, limit = 10, status = null, verified = null }) {
+async function findAllWithUser({ page = 1, limit = 10, status = null, verified = null, search = null }) {
   const offset = (page - 1) * limit;
   let whereClause = "c.is_deleted = 0";
   let params = [];
@@ -70,6 +70,12 @@ async function findAllWithUser({ page = 1, limit = 10, status = null, verified =
   if (verified !== null) {
     whereClause += " AND c.verified = ?";
     params.push(verified);
+  }
+
+  // Thêm search theo tên center
+  if (search) {
+    whereClause += " AND c.name LIKE ?";
+    params.push(`%${search}%`);
   }
 
   params.push(limit, offset);
@@ -279,6 +285,42 @@ async function findByUserIdWithSubscription(userId) {
   return rows[0] || null;
 }
 
+// Đếm tổng số centers trong hệ thống
+async function countAllCenters() {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) as total 
+     FROM centers 
+     WHERE status = 'approved' AND is_deleted = 0`
+  );
+  return rows[0].total;
+}
+
+// Lấy top centers theo số lượng follows
+async function getTopCentersByFollows(limit = 10) {
+  const [rows] = await db.query(
+    `SELECT 
+      c.id,
+      c.name,
+      c.logo_url AS logoUrl,
+      c.phone,
+      c.address,
+      c.website_url AS websiteUrl,
+      c.description,
+      c.verified,
+      u.name AS userName,
+      COUNT(DISTINCT f.id) AS totalFollows
+    FROM centers c
+    LEFT JOIN follows f ON c.id = f.center_id AND f.is_deleted = 0
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.status = 'approved' AND c.is_deleted = 0
+    GROUP BY c.id
+    ORDER BY totalFollows DESC
+    LIMIT ?`,
+    [limit]
+  );
+  return rows;
+}
+
 module.exports = {
   createCenterRequest,
   findByUserId,
@@ -292,4 +334,6 @@ module.exports = {
   updateCenter,
   deleteCenterRequest,
   deleteCenter,
+  countAllCenters,
+  getTopCentersByFollows
 };

@@ -549,13 +549,14 @@ async function updateCenter(req, res) {
 // Lấy tất cả trung tâm (public)
 async function getAllCenters(req, res) {
   try {
-    const { page = 1, limit = 10, status, verified } = req.query;
+    const { page = 1, limit = 10, status, verified, search } = req.query;
     
     const result = await Center.findAllWithUser({
       page: parseInt(page),
       limit: parseInt(limit),
       status,
-      verified: verified === 'true' ? 1 : verified === 'false' ? 0 : null
+      verified: verified === 'true' ? 1 : verified === 'false' ? 0 : null,
+      search
     });
 
     return res.status(200).json(result);
