@@ -1,4 +1,5 @@
 const Subscription = require("../models/subscription.model");
+const scheduleNotificationCron = require("./scheduleNotificationCron");
 
 // Chạy mỗi ngày để check expired subscriptions
 async function checkExpiredSubscriptions() {
@@ -83,9 +84,28 @@ function setupCronJobs() {
     }
   }, 60 * 60 * 1000); // 1 hour
 
+  // Chạy mỗi 6 giờ để check schedules sắp khai giảng (thông báo trước 24h)
+  setInterval(async () => {
+    try {
+      await scheduleNotificationCron.checkAndNotifyUpcomingSchedules(24);
+    } catch (error) {
+      console.error('Schedule notification cron failed:', error);
+    }
+  }, 6 * 60 * 60 * 1000); // 6 hours
+
+  // Chạy ngay lần đầu tiên
+  setTimeout(async () => {
+    try {
+      await scheduleNotificationCron.checkAndNotifyUpcomingSchedules(24);
+    } catch (error) {
+      console.error('Initial schedule notification check failed:', error);
+    }
+  }, 5000); // Sau 5 giây khi server khởi động
+
   console.log('🕐 Subscription cron jobs initialized');
   console.log('  - Daily expiry check: 24h interval');
   console.log('  - Hourly quota check: 1h interval');
+  console.log('  - Schedule notifications: 6h interval (24h before start)');
 }
 
 module.exports = {

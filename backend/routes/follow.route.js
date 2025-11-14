@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const followController = require('../controllers/follow.controller');
+const { auth } = require('../middlewares/auth.middleware');
 const { 
   validateFollowCourse,
+  validateFollowCenter,
   validateUUIDParam,
   validatePaginationQuery,
   validateTopCoursesQuery,
   validateRecentFollowsQuery,
   validateCheckFollowQuery,
+  validateCheckFollowCenterQuery,
   handleValidationErrors 
 } = require('../middlewares/follow.validator');
 
@@ -208,6 +211,122 @@ router.delete('/',
 
 /**
  * @swagger
+ * /api/v1/follows/center:
+ *   post:
+ *     summary: Theo dõi trung tâm
+ *     description: Người dùng theo dõi một trung tâm
+ *     tags: [Follows]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - centerId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của người dùng
+ *               centerId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của trung tâm
+ *     responses:
+ *       201:
+ *         description: Theo dõi trung tâm thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ hoặc đã theo dõi trung tâm này rồi
+ *       404:
+ *         description: Người dùng hoặc trung tâm không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.post('/center', 
+  validateFollowCenter,
+  handleValidationErrors,
+  followController.followCenter
+);
+
+/**
+ * @swagger
+ * /api/v1/follows/center:
+ *   delete:
+ *     summary: Bỏ theo dõi trung tâm
+ *     description: Người dùng bỏ theo dõi một trung tâm
+ *     tags: [Follows]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - centerId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của người dùng
+ *               centerId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID của trung tâm
+ *     responses:
+ *       200:
+ *         description: Bỏ theo dõi trung tâm thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.delete('/center', 
+  validateFollowCenter,
+  handleValidationErrors,
+  followController.unfollowCenter
+);
+
+/**
+ * @swagger
+ * /api/v1/follows/center/check:
+ *   get:
+ *     summary: Kiểm tra trạng thái theo dõi trung tâm
+ *     description: Kiểm tra người dùng có đang theo dõi trung tâm không
+ *     tags: [Follows]
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của người dùng
+ *       - in: query
+ *         name: centerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của trung tâm
+ *     responses:
+ *       200:
+ *         description: Kiểm tra trạng thái theo dõi trung tâm thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/center/check', 
+  validateCheckFollowCenterQuery,
+  handleValidationErrors,
+  followController.checkFollowCenterStatus
+);
+
+/**
+ * @swagger
  * /api/v1/follows/check:
  *   get:
  *     summary: Kiểm tra trạng thái theo dõi
@@ -374,6 +493,87 @@ router.get('/stats', followController.getFollowStats);
 
 /**
  * @swagger
+ * /api/v1/follows/my:
+ *   get:
+ *     summary: Lấy danh sách khóa học tôi đang theo dõi
+ *     description: Lấy danh sách khóa học mà user hiện tại (đã đăng nhập) đang theo dõi với tính năng tìm kiếm và filter
+ *     tags: [Follows]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số lượng item trên mỗi trang
+ *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *         description: Tìm kiếm theo tên hoặc mô tả khóa học
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [draft, submitted, approved, rejected]
+ *         description: Lọc theo trạng thái khóa học
+ *       - in: query
+ *         name: modality
+ *         schema:
+ *           type: string
+ *           enum: [online, offline, hybrid]
+ *         description: Lọc theo hình thức học
+ *       - in: query
+ *         name: centerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Lọc theo trung tâm
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách khóa học đang theo dõi thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 userId:
+ *                   type: string
+ *                 filters:
+ *                   type: object
+ *                   nullable: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FollowedCourse'
+ *                 pagination:
+ *                   type: object
+ *       401:
+ *         description: Chưa đăng nhập
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/my',
+  auth,
+  validatePaginationQuery,
+  handleValidationErrors,
+  followController.getMyFollowedCourses
+);
+
+/**
+ * @swagger
  * /api/v1/follows/user/{userId}:
  *   get:
  *     summary: Lấy danh sách khóa học user đang theo dõi
@@ -507,6 +707,81 @@ router.get('/course/:courseId',
   validatePaginationQuery,
   handleValidationErrors,
   followController.getCourseFollowers
+);
+
+/**
+ * @swagger
+ * /api/v1/follows/center/{centerId}:
+ *   get:
+ *     summary: Lấy danh sách người theo dõi trung tâm
+ *     description: Lấy danh sách người dùng đang theo dõi một trung tâm cụ thể với pagination
+ *     tags: [Follows]
+ *     parameters:
+ *       - in: path
+ *         name: centerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của trung tâm
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số lượng kết quả mỗi trang
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách người theo dõi trung tâm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 centerId:
+ *                   type: string
+ *                 centerName:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       userId:
+ *                         type: string
+ *                       followedAt:
+ *                         type: string
+ *                       userName:
+ *                         type: string
+ *                       userEmail:
+ *                         type: string
+ *                       userAvatar:
+ *                         type: string
+ *                 pagination:
+ *                   type: object
+ *       404:
+ *         description: Trung tâm không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/center/:centerId', 
+  validateUUIDParam('centerId'),
+  validatePaginationQuery,
+  handleValidationErrors,
+  followController.getCenterFollowers
 );
 
 module.exports = router;

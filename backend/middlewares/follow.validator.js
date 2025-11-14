@@ -15,6 +15,21 @@ const validateFollowCourse = [
     .withMessage('ID khóa học phải là UUID hợp lệ')
 ];
 
+// Validation rules cho follow/unfollow center
+const validateFollowCenter = [
+  body('userId')
+    .notEmpty()
+    .withMessage('ID người dùng là bắt buộc')
+    .isUUID()
+    .withMessage('ID người dùng phải là UUID hợp lệ'),
+  
+  body('centerId')
+    .notEmpty()
+    .withMessage('ID trung tâm là bắt buộc')
+    .isUUID()
+    .withMessage('ID trung tâm phải là UUID hợp lệ')
+];
+
 // Validation cho route params
 const validateUUIDParam = (paramName) => [
   param(paramName)
@@ -66,6 +81,21 @@ const validateCheckFollowQuery = [
     .withMessage('ID khóa học phải là UUID hợp lệ')
 ];
 
+// Validation cho check follow center status
+const validateCheckFollowCenterQuery = [
+  query('userId')
+    .notEmpty()
+    .withMessage('ID người dùng là bắt buộc')
+    .isUUID()
+    .withMessage('ID người dùng phải là UUID hợp lệ'),
+  
+  query('centerId')
+    .notEmpty()
+    .withMessage('ID trung tâm là bắt buộc')
+    .isUUID()
+    .withMessage('ID trung tâm phải là UUID hợp lệ')
+];
+
 // Middleware xử lý lỗi validation
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -80,10 +110,12 @@ const handleValidationErrors = (req, res, next) => {
 
 module.exports = {
   validateFollowCourse,
+  validateFollowCenter,
   validateUUIDParam,
   validatePaginationQuery,
   validateTopCoursesQuery,
   validateRecentFollowsQuery,
   validateCheckFollowQuery,
+  validateCheckFollowCenterQuery,
   handleValidationErrors
 };

@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Schedule = require('../models/schedule.model');
 const Course = require('../models/course.model');
+const scheduleNotificationCron = require('../services/scheduleNotificationCron');
 
 module.exports = {
   createSchedule,
@@ -9,7 +10,8 @@ module.exports = {
   updateSchedule,
   deleteSchedule,
   getSchedulesByCourse,
-  getUpcomingSchedules
+  getUpcomingSchedules,
+  notifyScheduleFollowers
 };
 
 // Tạo schedule mới
@@ -267,6 +269,41 @@ async function getUpcomingSchedules(req, res) {
     console.error("Get upcoming schedules error:", error);
     res.status(500).json({
       error: "Lỗi server khi lấy danh sách lịch học sắp diễn ra"
+    });
+  }
+}
+
+// Gửi thông báo cho followers về schedule sắp khai giảng
+async function notifyScheduleFollowers(req, res) {
+  try {
+    const { scheduleId } = req.params;
+    const { hoursBefore = 24 } = req.body;
+
+    // Kiểm tra schedule có tồn tại không
+    const schedule = await Schedule.findById(scheduleId);
+    if (!schedule) {
+      return res.status(404).json({
+        error: "Lịch học không tồn tại"
+      });
+    }
+
+    // Gửi notification
+    const notificationCount = await scheduleNotificationCron.notifyBeforeSchedule(
+      scheduleId, 
+      parseInt(hoursBefore)
+    );
+
+    res.json({
+      message: "Gửi thông báo thành công",
+      scheduleId,
+      courseTitle: schedule.courseTitle,
+      notificationsSent: notificationCount
+    });
+
+  } catch (error) {
+    console.error("Notify schedule followers error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi gửi thông báo lịch học"
     });
   }
 }

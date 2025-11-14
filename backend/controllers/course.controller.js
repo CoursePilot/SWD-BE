@@ -1,6 +1,8 @@
 const Course = require("../models/course.model");
 const Center = require("../models/center.model");
 const Subscription = require("../models/subscription.model");
+const Follow = require("../models/follow.model");
+const Notification = require("../models/notification.model");
 const { validationResult } = require("express-validator");
 const db = require("../config/db");
 
@@ -109,6 +111,41 @@ async function createCourse(req, res) {
     }
 
     const course = await Course.findById(courseId);
+
+    // Gửi thông báo cho tất cả user đang follow trung tâm này
+    try {
+      const followerIds = await Follow.getUserIdsByCenter(centerId);
+      
+      if (followerIds.length > 0) {
+        // Tạo notification cho mỗi follower
+        const notificationPromises = followerIds.map(userId => {
+          return Notification.create({
+            userId,
+            centerId,
+            type: 'system',
+            payload: {
+              title: 'Khóa học mới',
+              message: `Khóa học mới của trung tâm "${center.name}": "${title}"`,
+              courseId,
+              centerId,
+              centerName: center.name,
+              courseTitle: title,
+              courseSummary: summary,
+              courseImage: imageUrl,
+              modality,
+              priceMin,
+              priceMax
+            }
+          });
+        });
+
+        await Promise.all(notificationPromises);
+        console.log(`Đã gửi thông báo đến ${followerIds.length} người theo dõi trung tâm cho khóa học mới: ${courseId}`);
+      }
+    } catch (notifError) {
+      // Log lỗi nhưng không làm fail request
+      console.error("Lỗi khi gửi thông báo:", notifError);
+    }
 
     res.status(201).json({
       message: "Tạo khóa học thành công",

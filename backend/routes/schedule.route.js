@@ -481,4 +481,52 @@ router.delete('/:id', scheduleController.deleteSchedule);
  */
 router.get('/course/:courseId', scheduleController.getSchedulesByCourse);
 
+/**
+ * @swagger
+ * /api/v1/schedules/{scheduleId}/notify:
+ *   post:
+ *     summary: Gửi thông báo cho followers về lịch học sắp khai giảng
+ *     description: Gửi notification cho tất cả users đang follow khóa học về lịch khai giảng sắp tới (Admin/Center only)
+ *     tags: [Schedules]
+ *     parameters:
+ *       - in: path
+ *         name: scheduleId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của lịch học
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               hoursBefore:
+ *                 type: integer
+ *                 default: 24
+ *                 description: Số giờ trước khi khai giảng (dùng cho message)
+ *     responses:
+ *       200:
+ *         description: Gửi thông báo thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 scheduleId:
+ *                   type: string
+ *                 courseTitle:
+ *                   type: string
+ *                 notificationsSent:
+ *                   type: integer
+ *       404:
+ *         description: Lịch học không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.post('/:scheduleId/notify', scheduleController.notifyScheduleFollowers);
+
 module.exports = router;
