@@ -86,22 +86,25 @@ async function createLead(req, res) {
     }
 
     // Kiểm tra xem user đã đăng ký course này chưa (theo studentId hoặc email)
+    // CHỈ kiểm tra các lead có status KHÔNG phải disqualified hoặc lost
     let existingLeadQuery = '';
     let existingLeadParams = [];
     
     if (studentId) {
       // Nếu có studentId, kiểm tra theo studentId hoặc email
       existingLeadQuery = `
-        SELECT id FROM leads 
+        SELECT id, status FROM leads 
         WHERE course_id = ? AND (student_id = ? OR email = ?)
+          AND status NOT IN ('disqualified', 'lost')
         LIMIT 1
       `;
       existingLeadParams = [courseId, studentId, email];
     } else {
       // Nếu không có studentId (guest), kiểm tra theo email
       existingLeadQuery = `
-        SELECT id FROM leads 
+        SELECT id, status FROM leads 
         WHERE course_id = ? AND email = ?
+          AND status NOT IN ('disqualified', 'lost')
         LIMIT 1
       `;
       existingLeadParams = [courseId, email];
@@ -113,7 +116,8 @@ async function createLead(req, res) {
       return res.status(409).json({
         error: "Bạn đã đăng ký khóa học này rồi",
         message: "Không thể đăng ký lại khóa học đã đăng ký trước đó",
-        existingLeadId: existingLeads[0].id
+        existingLeadId: existingLeads[0].id,
+        existingStatus: existingLeads[0].status
       });
     }
 

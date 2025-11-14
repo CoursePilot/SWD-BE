@@ -154,7 +154,7 @@ const { auth } = require('../middlewares/auth.middleware');
  *       404:
  *         description: Center không tồn tại
  *       409:
- *         description: Đã đăng ký khóa học này rồi
+ *         description: Đã đăng ký khóa học này rồi (không áp dụng với lead có status disqualified hoặc lost)
  *         content:
  *           application/json:
  *             schema:
@@ -170,6 +170,10 @@ const { auth } = require('../middlewares/auth.middleware');
  *                   type: string
  *                   format: uuid
  *                   description: ID của lead đã tồn tại
+ *                 existingStatus:
+ *                   type: string
+ *                   description: Status hiện tại của lead đã tồn tại
+ *                   example: "new"
  */
 router.post('/', leadController.createLead);
 
