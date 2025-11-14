@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const leadController = require('../controllers/lead.controller');
 const { upload, handleMulterError } = require('../middlewares/upload.middleware');
+const { auth } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -185,6 +186,102 @@ router.post('/', leadController.createLead);
  *         description: Danh sách leads
  */
 router.get('/', leadController.getAllLeads);
+
+/**
+ * @swagger
+ * /api/v1/leads/my-courses:
+ *   get:
+ *     summary: Lấy danh sách khóa học đã đăng ký của user
+ *     description: Lấy danh sách các khóa học mà user đã đăng ký (submit lead) theo userId
+ *     tags: [Leads]
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của user cần lấy danh sách
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [new, assigned, contacted, qualified, disqualified, enrolled, lost]
+ *         description: Lọc theo trạng thái lead
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách khóa học thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 courses:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       courseId:
+ *                         type: string
+ *                       courseTitle:
+ *                         type: string
+ *                       summary:
+ *                         type: string
+ *                       imageUrl:
+ *                         type: string
+ *                       priceMin:
+ *                         type: number
+ *                       priceMax:
+ *                         type: number
+ *                       modality:
+ *                         type: string
+ *                       centerName:
+ *                         type: string
+ *                       centerLogo:
+ *                         type: string
+ *                       leadId:
+ *                         type: string
+ *                       leadStatus:
+ *                         type: string
+ *                       registeredAt:
+ *                         type: string
+ *                         format: date-time
+ *                       scheduleId:
+ *                         type: string
+ *                       scheduleStartDate:
+ *                         type: string
+ *                         format: date
+ *                       scheduleEndDate:
+ *                         type: string
+ *                         format: date
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *       400:
+ *         description: Thiếu userId
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/my-courses', leadController.getMyCourses);
 
 /**
  * @swagger

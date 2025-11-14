@@ -261,6 +261,81 @@ async function countByStatus(centerId) {
   }, {});
 }
 
+// Lấy danh sách courses mà user đã đăng ký (leads)
+async function findCoursesByStudent(userId, { page = 1, limit = 10, status }) {
+  const offset = (page - 1) * limit;
+  
+  // Lấy email của user để match với leads
+  const [userRows] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+  if (userRows.length === 0) {
+    return {
+      courses: [],
+      total: 0,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: 0
+    };
+  }
+  
+  const userEmail = userRows[0].email;
+  
+  // Tìm leads theo student_id HOẶC email
+  let whereClause = "WHERE (l.student_id = ? OR l.email = ?)";
+  const params = [userId, userEmail];
+  
+  if (status) {
+    whereClause += " AND l.status = ?";
+    params.push(status);
+  }
+  
+  params.push(limit, offset);
+  
+  const [rows] = await db.query(`
+    SELECT 
+      c.id AS courseId,
+      c.title AS courseTitle,
+      c.summary,
+      c.image_url AS imageUrl,
+      c.price_min AS priceMin,
+      c.price_max AS priceMax,
+      c.modality,
+      ce.name AS centerName,
+      ce.logo_url AS centerLogo,
+      l.id AS leadId,
+      l.status AS leadStatus,
+      l.created_at AS registeredAt,
+      s.id AS scheduleId,
+      s.start_date AS scheduleStartDate,
+      s.end_date AS scheduleEndDate
+    FROM leads l
+    INNER JOIN courses c ON l.course_id = c.id
+    LEFT JOIN centers ce ON c.center_id = ce.id
+    LEFT JOIN schedules s ON l.schedule_id = s.id
+    ${whereClause}
+    ORDER BY l.created_at DESC
+    LIMIT ? OFFSET ?
+  `, params);
+  
+  // Count total
+  const countParams = params.slice(0, -2);
+  const [countRows] = await db.query(`
+    SELECT COUNT(*) AS total 
+    FROM leads l
+    ${whereClause}
+  `, countParams);
+  
+  const total = countRows[0].total;
+  const totalPages = Math.ceil(total / limit);
+  
+  return {
+    courses: rows,
+    total,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    totalPages
+  };
+}
+
 module.exports = {
   create,
   findById,
@@ -270,5 +345,6 @@ module.exports = {
   updateById,
   updateStatus,
   deleteById,
-  countByStatus
+  countByStatus,
+  findCoursesByStudent
 };

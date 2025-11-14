@@ -12,7 +12,8 @@ module.exports = {
   updateLead,
   deleteLead,
   getLeadsByCenter,
-  getLeadsByCourse
+  getLeadsByCourse,
+  getMyCourses
 };
 
 // Tạo lead mới
@@ -439,7 +440,38 @@ async function getLeadsByCourse(req, res) {
   } catch (error) {
     console.error("Get leads by course error:", error);
     res.status(500).json({
-      error: "Lỗi server khi lấy danh sách leads theo course"
+      error: "Lỗi server khi lấy leads của course"
+    });
+  }
+}
+
+// Lấy danh sách courses mà user đã đăng ký
+async function getMyCourses(req, res) {
+  try {
+    const { userId, page = 1, limit = 10, status } = req.query;
+    
+    // Bắt buộc phải có userId
+    if (!userId) {
+      return res.status(400).json({
+        error: "Thiếu tham số bắt buộc: userId"
+      });
+    }
+
+    const result = await Lead.findCoursesByStudent(userId, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status
+    });
+
+    res.json({
+      message: "Lấy danh sách khóa học đã đăng ký thành công",
+      ...result
+    });
+
+  } catch (error) {
+    console.error("Get my courses error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách khóa học"
     });
   }
 }
