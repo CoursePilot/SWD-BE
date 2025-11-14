@@ -153,6 +153,23 @@ const { auth } = require('../middlewares/auth.middleware');
  *                   example: "Đã hết quota lead"
  *       404:
  *         description: Center không tồn tại
+ *       409:
+ *         description: Đã đăng ký khóa học này rồi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Bạn đã đăng ký khóa học này rồi"
+ *                 message:
+ *                   type: string
+ *                   example: "Không thể đăng ký lại khóa học đã đăng ký trước đó"
+ *                 existingLeadId:
+ *                   type: string
+ *                   format: uuid
+ *                   description: ID của lead đã tồn tại
  */
 router.post('/', leadController.createLead);
 

@@ -85,6 +85,38 @@ async function createLead(req, res) {
       });
     }
 
+    // Kiểm tra xem user đã đăng ký course này chưa (theo studentId hoặc email)
+    let existingLeadQuery = '';
+    let existingLeadParams = [];
+    
+    if (studentId) {
+      // Nếu có studentId, kiểm tra theo studentId hoặc email
+      existingLeadQuery = `
+        SELECT id FROM leads 
+        WHERE course_id = ? AND (student_id = ? OR email = ?)
+        LIMIT 1
+      `;
+      existingLeadParams = [courseId, studentId, email];
+    } else {
+      // Nếu không có studentId (guest), kiểm tra theo email
+      existingLeadQuery = `
+        SELECT id FROM leads 
+        WHERE course_id = ? AND email = ?
+        LIMIT 1
+      `;
+      existingLeadParams = [courseId, email];
+    }
+    
+    const [existingLeads] = await db.query(existingLeadQuery, existingLeadParams);
+    
+    if (existingLeads.length > 0) {
+      return res.status(409).json({
+        error: "Bạn đã đăng ký khóa học này rồi",
+        message: "Không thể đăng ký lại khóa học đã đăng ký trước đó",
+        existingLeadId: existingLeads[0].id
+      });
+    }
+
     // Kiểm tra subscription và lead quota của center
     const quotaCheck = await Subscription.checkQuotaAvailable(course.centerId, 'lead');
     if (!quotaCheck.available) {
