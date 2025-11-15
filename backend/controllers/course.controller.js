@@ -251,7 +251,7 @@ async function updateCourse(req, res) {
     }
 
     // Xử lý image upload nếu có
-    let imageUrl = null;
+    let imageUrl = course.imageUrl; // GIỮ LẠI ảnh cũ mặc định
     if (req.files && req.files.image && req.files.image[0]) {
       try {
         const supabase = require('../config/supabase');
@@ -289,7 +289,7 @@ async function updateCourse(req, res) {
           .from('SWD_image')
           .getPublicUrl(filePath);
 
-        imageUrl = urlData.publicUrl;
+        imageUrl = urlData.publicUrl; // CẬP NHẬT ảnh mới nếu upload thành công
       } catch (uploadError) {
         console.error("Course image upload failed:", uploadError);
         return res.status(500).json({
