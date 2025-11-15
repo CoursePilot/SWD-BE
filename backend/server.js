@@ -1,12 +1,17 @@
 const express = require("express");
+const http = require("http");
+const path = require("path");
 const setupSwagger = require("./config/swagger.js");
 const passport = require("./config/passport.js");
 const session = require("express-session");
+const socketManager = require("./utils/socketManager");
 require('dotenv').config({ debug: false });
 
 const cors = require("cors");
 
 const app = express();
+const server = http.createServer(app);
+
 app.use(cors({
   origin: "*",
   credentials: true,
@@ -25,6 +30,9 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static files (for test HTML)
+app.use(express.static(path.join(__dirname)));
 
 // Setup Swagger
 setupSwagger(app);
@@ -58,7 +66,11 @@ subscriptionCron.setupCronJobs();
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+// Initialize Socket.io
+socketManager.initialize(server);
+
+server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📘 Swagger docs: http://localhost:${PORT}/docs`);
+  console.log(`🔌 Socket.io ready for real-time notifications`);
 });

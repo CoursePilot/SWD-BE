@@ -1,5 +1,6 @@
 const Notification = require('../models/notification.model');
 const { validationResult } = require('express-validator');
+const socketManager = require('../utils/socketManager');
 
 module.exports = {
   createNotification,
@@ -26,6 +27,14 @@ async function createNotification(req, res) {
     }
 
     let { userId, centerId, type, payload } = req.body;
+    
+    // 🔍 DEBUG LOG
+    console.log("========================================");
+    console.log("📥 [createNotification] Request body:", req.body);
+    console.log("📥 [createNotification] userId:", userId);
+    console.log("📥 [createNotification] centerId:", centerId);
+    console.log("📥 [createNotification] type:", type);
+    console.log("========================================");
 
     // Validate type
     const validTypes = ['lead', 'reminder', 'system'];
@@ -54,6 +63,15 @@ async function createNotification(req, res) {
     });
 
     const notification = await Notification.findById(notificationId);
+
+    // 🔥 Emit real-time notification to user via Socket.io
+    if (userId) {
+      socketManager.sendNotification(userId, notification);
+      
+      // Also send updated unread count
+      const unreadCount = await Notification.countUnread(userId, centerId);
+      socketManager.sendUnreadCount(userId, unreadCount);
+    }
 
     res.status(201).json({
       message: "Tạo notification thành công",
@@ -258,6 +276,11 @@ async function markAsRead(req, res) {
       });
     }
 
+    // 🔥 Emit updated unread count via Socket.io
+    const userId = notification.userId;
+    const unreadCount = await Notification.countUnread(userId, notification.centerId);
+    socketManager.sendUnreadCount(userId, unreadCount);
+
     res.json({
       message: "Đánh dấu đã đọc thành công"
     });
@@ -282,6 +305,9 @@ async function markAllAsRead(req, res) {
     } else {
       count = await Notification.markAllAsReadByUser(userId);
     }
+
+    // 🔥 Emit updated unread count (should be 0) via Socket.io
+    socketManager.sendUnreadCount(userId, 0);
 
     res.json({
       message: `Đánh dấu ${count} notifications đã đọc thành công`,
