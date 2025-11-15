@@ -197,6 +197,13 @@ class SocketManager {
    * Send new notification to user in real-time
    */
   sendNotification(userId, notification) {
+    console.log("========================================");
+    console.log("📤 [socketManager] sendNotification called");
+    console.log("📤 [socketManager] userId:", userId);
+    console.log("📤 [socketManager] userId type:", typeof userId);
+    console.log("📤 [socketManager] notification:", notification);
+    console.log("========================================");
+    
     return this.emitToUser(userId, 'notification:new', {
       notification,
       timestamp: new Date().toISOString()
@@ -207,6 +214,13 @@ class SocketManager {
    * Send unread count update to user
    */
   sendUnreadCount(userId, count) {
+    console.log("========================================");
+    console.log("📊 [socketManager] sendUnreadCount called");
+    console.log("📊 [socketManager] userId:", userId);
+    console.log("📊 [socketManager] userId type:", typeof userId);
+    console.log("📊 [socketManager] count:", count);
+    console.log("========================================");
+    
     return this.emitToUser(userId, 'unread-count', { count });
   }
 

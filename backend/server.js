@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const setupSwagger = require("./config/swagger.js");
 const passport = require("./config/passport.js");
 const session = require("express-session");
@@ -29,6 +30,9 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static files (for test HTML)
+app.use(express.static(path.join(__dirname)));
 
 // Setup Swagger
 setupSwagger(app);

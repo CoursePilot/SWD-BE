@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket Notifications</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .status.connected .status-dot {
+            background: #28a745;
+        }
+        .status.disconnected .status-dot {
+            background: #dc3545;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid;
+        }
+        .log-entry.success {
+            background: #1a2f1a;
+            border-color: #28a745;
+        }
+        .log-entry.error {
+            background: #2f1a1a;
+            border-color: #dc3545;
+        }
+        .log-entry.info {
+            background: #1a1a2f;
+            border-color: #007bff;
+        }
+        .log-entry.warning {
+            background: #2f2a1a;
+            border-color: #ffc107;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 11px;
+        }
+        .badge {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔌 WebSocket Notification Test</h1>
+            <p style="color: #666; margin-top: 8px;">Test real-time notifications với Socket.io</p>
+            <div style="margin-top: 16px;">
+                <span id="status" class="status disconnected">
+                    <span class="status-dot"></span>
+                    Disconnected
+                </span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="stat-card">
+                <div class="stat-value" id="unreadCount">0</div>
+                <div class="stat-label">Notifications chưa đọc</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="receivedCount">0</div>
+                <div class="stat-label">Notifications nhận được</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="socketId">-</div>
+                <div class="stat-label">Socket ID</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔐 1. Kết nối</h2>
+            <div class="form-group">
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+            </div>
+            <div class="form-group">
+                <label>JWT Token:</label>
+                <input type="text" id="token" placeholder="Nhập JWT token của bạn">
+                <small style="color: #666;">💡 Lấy token từ localStorage sau khi login, hoặc từ API response</small>
+            </div>
+            <div class="button-group">
+                <button onclick="connect()">🔌 Kết nối</button>
+                <button onclick="disconnect()" style="background: #dc3545;">❌ Ngắt kết nối</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📤 2. Test Events</h2>
+            <div class="button-group">
+                <button onclick="getUnreadCount()">📊 Lấy số chưa đọc</button>
+                <button onclick="testMarkRead()">✅ Mark as read (test)</button>
+                <button onclick="testMarkAllRead()">✅ Mark all read</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🧪 3. Tạo Notification Test (qua API)</h2>
+            <div class="form-group">
+                <label>User ID (nhận notification):</label>
+                <input type="text" id="testUserId" placeholder="uuid-của-user">
+            </div>
+            <div class="form-group">
+                <label>Type:</label>
+                <select id="testType">
+                    <option value="system">System</option>
+                    <option value="lead">Lead</option>
+                    <option value="reminder">Reminder</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title:</label>
+                <input type="text" id="testTitle" value="Test Notification">
+            </div>
+            <div class="form-group">
+                <label>Message:</label>
+                <textarea id="testMessage" rows="2">Đây là test notification từ WebSocket</textarea>
+            </div>
+            <button onclick="createTestNotification()">🚀 Tạo Notification</button>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2>📋 Event Logs</h2>
+                <button onclick="clearLogs()" style="background: #6c757d; padding: 8px 16px;">🗑️ Clear</button>
+            </div>
+            <div id="logs" class="log-container">
+                <div class="log-entry info">
+                    <span class="timestamp">[00:00:00]</span> Waiting for connection...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let receivedCount = 0;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('Logs cleared', 'info');
+        }
+
+        function updateStatus(connected, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            statusEl.innerHTML = `<span class="status-dot"></span>${text}`;
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const token = document.getElementById('token').value;
+
+            if (!token) {
+                alert('⚠️ Vui lòng nhập JWT token!');
+                log('❌ Thiếu JWT token', 'error');
+                return;
+            }
+
+            if (socket) {
+                socket.disconnect();
+            }
+
+            log(`🔌 Đang kết nối đến ${serverUrl}...`, 'info');
+
+            socket = io(serverUrl, {
+                auth: { token },
+                transports: ['websocket', 'polling']
+            });
+
+            // Connected
+            socket.on('connected', (data) => {
+                log(`✅ Kết nối thành công! Socket ID: ${data.socketId}, User ID: ${data.userId}`, 'success');
+                updateStatus(true, 'Connected');
+                document.getElementById('socketId').textContent = data.socketId.substring(0, 8) + '...';
+                
+                // Auto request unread count
+                socket.emit('get:unread-count');
+            });
+
+            // New notification
+            socket.on('notification:new', (data) => {
+                receivedCount++;
+                document.getElementById('receivedCount').textContent = receivedCount;
+                
+                const notif = data.notification;
+                log(`🔔 <strong>Notification mới!</strong><br>
+                    📌 Type: ${notif.type}<br>
+                    📌 Title: ${notif.payload.title}<br>
+                    📌 Message: ${notif.payload.message}`, 'success');
+                
+                // Show browser notification if permitted
+                if (Notification.permission === 'granted') {
+                    new Notification(notif.payload.title, {
+                        body: notif.payload.message,
+                        icon: '🔔'
+                    });
+                }
+            });
+
+            // Unread count
+            socket.on('unread-count', (data) => {
+                log(`📊 Số notification chưa đọc: ${data.count}`, 'info');
+                document.getElementById('unreadCount').textContent = data.count;
+            });
+
+            // Marked as read
+            socket.on('marked:read', (data) => {
+                log(`✅ Đã đánh dấu notification ${data.notificationId} là đã đọc`, 'success');
+            });
+
+            // Marked all as read
+            socket.on('marked:all-read', (data) => {
+                log(`✅ Đã đánh dấu ${data.count} notifications là đã đọc`, 'success');
+            });
+
+            // Error
+            socket.on('error', (error) => {
+                log(`❌ Error: ${error.message || JSON.stringify(error)}`, 'error');
+            });
+
+            // Connect error
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection error: ${error.message}`, 'error');
+                updateStatus(false, 'Connection Error');
+                alert('⚠️ Không thể kết nối! Kiểm tra:\n- Server đã chạy chưa?\n- JWT token đúng chưa?\n- URL đúng chưa?');
+            });
+
+            // Disconnect
+            socket.on('disconnect', () => {
+                log('🔌 Đã ngắt kết nối', 'warning');
+                updateStatus(false, 'Disconnected');
+            });
+
+            // Reconnecting
+            socket.on('reconnect_attempt', () => {
+                log('🔄 Đang thử kết nối lại...', 'warning');
+            });
+
+            socket.on('reconnect', (attemptNumber) => {
+                log(`✅ Đã kết nối lại sau ${attemptNumber} lần thử`, 'success');
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                log('❌ Đã ngắt kết nối thủ công', 'warning');
+            }
+        }
+
+        function getUnreadCount() {
+            if (!socket || !socket.connected) {
+                alert('⚠️ Chưa kết nối!');
+                return;
+            }
+            socket.emit('get:unread-count');
+            log('📤 Đã gửi request: get:unread-count', 'info');
+        }
+
+        function testMarkRead() {
+            if (!socket || !socket.connected) {
+                alert('⚠️ Chưa kết nối!');
+                return;
+            }
+            const testId = prompt('Nhập notification ID để mark as read:');
+            if (testId) {
+                socket.emit('mark:read', { notificationId: testId });
+                log(`📤 Đã gửi request mark:read cho ID: ${testId}`, 'info');
+            }
+        }
+
+        function testMarkAllRead() {
+            if (!socket || !socket.connected) {
+                alert('⚠️ Chưa kết nối!');
+                return;
+            }
+            socket.emit('mark:all-read');
+            log('📤 Đã gửi request: mark:all-read', 'info');
+        }
+
+        async function createTestNotification() {
+            const token = document.getElementById('token').value;
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userId = document.getElementById('testUserId').value;
+            const type = document.getElementById('testType').value;
+            const title = document.getElementById('testTitle').value;
+            const message = document.getElementById('testMessage').value;
+
+            if (!token || !userId) {
+                alert('⚠️ Vui lòng nhập Token và User ID!');
+                return;
+            }
+
+            const payload = JSON.stringify({ title, message });
+
+            const formData = new FormData();
+            formData.append('userId', userId);
+            formData.append('type', type);
+            formData.append('payload', payload);
+
+            try {
+                log('📤 Đang tạo notification qua API...', 'info');
+                
+                const response = await fetch(`${serverUrl}/api/v1/notifications`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`✅ Đã tạo notification thành công!<br>ID: ${data.notification.id}`, 'success');
+                    alert('✅ Notification đã được tạo! Nếu User ID trùng với token của bạn, bạn sẽ nhận được real-time notification.');
+                } else {
+                    log(`❌ Lỗi tạo notification: ${data.error}`, 'error');
+                    alert(`❌ Lỗi: ${data.error}`);
+                }
+            } catch (error) {
+                log(`❌ Lỗi khi call API: ${error.message}`, 'error');
+                alert(`❌ Lỗi: ${error.message}`);
+            }
+        }
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Auto-fill token from localStorage if available
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+                log('💡 Đã tự động điền token từ localStorage', 'info');
+            }
+        });
+    </script>
+</body>
+</html>
+

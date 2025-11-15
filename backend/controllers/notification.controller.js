@@ -27,6 +27,14 @@ async function createNotification(req, res) {
     }
 
     let { userId, centerId, type, payload } = req.body;
+    
+    // 🔍 DEBUG LOG
+    console.log("========================================");
+    console.log("📥 [createNotification] Request body:", req.body);
+    console.log("📥 [createNotification] userId:", userId);
+    console.log("📥 [createNotification] centerId:", centerId);
+    console.log("📥 [createNotification] type:", type);
+    console.log("========================================");
 
     // Validate type
     const validTypes = ['lead', 'reminder', 'system'];
