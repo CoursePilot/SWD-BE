@@ -229,98 +229,8 @@ router.get('/',
   paymentController.getAllPayments
 );
 
-/**
- * @swagger
- * /api/v1/payments/expiring:
- *   get:
- *     summary: Lấy danh sách payments sắp hết hạn
- *     description: Lấy danh sách payments sắp hết hạn thanh toán
- *     tags: [Payments]
- *     parameters:
- *       - in: query
- *         name: days
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 30
- *           default: 3
- *         description: Số ngày sắp hết hạn
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: Số trang
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 10
- *         description: Số lượng item trên mỗi trang
- *     responses:
- *       200:
- *         description: Lấy danh sách payments sắp hết hạn thành công
- *       500:
- *         description: Lỗi server
- */
-router.get('/expiring', paymentController.getExpiringSoonPayments);
 
-/**
- * @swagger
- * /api/v1/payments/revenue:
- *   get:
- *     summary: Lấy thống kê doanh thu
- *     description: Lấy thống kê doanh thu theo center và khoảng thời gian
- *     tags: [Payments]
- *     parameters:
- *       - in: query
- *         name: centerId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID của center
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Ngày bắt đầu (YYYY-MM-DD)
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Ngày kết thúc (YYYY-MM-DD)
- *     responses:
- *       200:
- *         description: Lấy thống kê doanh thu thành công
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 centerId:
- *                   type: string
- *                 period:
- *                   type: object
- *                 stats:
- *                   $ref: '#/components/schemas/PaymentStats'
- *       400:
- *         description: Dữ liệu không hợp lệ
- *       500:
- *         description: Lỗi server
- */
-router.get('/revenue', 
-  validateRevenueQuery,
-  handleValidationErrors,
-  paymentController.getRevenueStats
-);
+
 
 /**
  * @swagger
@@ -360,43 +270,6 @@ router.get('/:paymentId',
   paymentController.getPaymentById
 );
 
-/**
- * @swagger
- * /api/v1/payments:
- *   post:
- *     summary: Tạo payment mới
- *     description: Tạo một payment mới (generic)
- *     tags: [Payments]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreatePaymentRequest'
- *     responses:
- *       201:
- *         description: Tạo payment thành công
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 payment:
- *                   $ref: '#/components/schemas/Payment'
- *       400:
- *         description: Dữ liệu không hợp lệ
- *       404:
- *         description: Subscription không tồn tại
- *       500:
- *         description: Lỗi server
- */
-router.post('/', 
-  validateCreatePayment,
-  handleValidationErrors,
-  paymentController.createPayment
-);
 
 /**
  * @swagger
