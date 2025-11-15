@@ -11,6 +11,7 @@ const {
   validateRecentFollowsQuery,
   validateCheckFollowQuery,
   validateCheckFollowCenterQuery,
+  validateUserCentersQuery,
   handleValidationErrors 
 } = require('../middlewares/follow.validator');
 
@@ -627,6 +628,104 @@ router.get('/my',
  *       500:
  *         description: Lỗi server
  */
+
+/**
+ * @swagger
+ * /api/v1/follows/user/centers:
+ *   get:
+ *     summary: Lấy danh sách trung tâm mà user đã follow
+ *     description: Lấy danh sách các trung tâm mà một user cụ thể đang theo dõi
+ *     tags: [Follows]
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID của user
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng items per page
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách trung tâm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 centers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       centerId:
+ *                         type: string
+ *                       followedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       centerName:
+ *                         type: string
+ *                       centerLogo:
+ *                         type: string
+ *                       centerPhone:
+ *                         type: string
+ *                       centerAddress:
+ *                         type: string
+ *                       centerWebsite:
+ *                         type: string
+ *                       centerDescription:
+ *                         type: string
+ *                       centerVerified:
+ *                         type: boolean
+ *                       centerStatus:
+ *                         type: string
+ *                       ownerName:
+ *                         type: string
+ *                       ownerEmail:
+ *                         type: string
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *       400:
+ *         description: Thiếu userId
+ *       404:
+ *         description: Người dùng không tồn tại
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/user/centers', 
+  validateUserCentersQuery,
+  handleValidationErrors,
+  followController.getUserFollowedCenters
+);
+
 router.get('/user/:userId', 
   validateUUIDParam('userId'),
   validatePaginationQuery,

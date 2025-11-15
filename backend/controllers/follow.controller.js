@@ -12,6 +12,7 @@ module.exports = {
   checkFollowStatus,
   checkFollowCenterStatus,
   getUserFollowedCourses,
+  getUserFollowedCenters,
   getMyFollowedCourses,
   getCourseFollowers,
   getCenterFollowers,
@@ -511,6 +512,45 @@ async function getFollowStats(req, res) {
     console.error("Get follow stats error:", error);
     res.status(500).json({
       error: "Lỗi server khi lấy thống kê theo dõi"
+    });
+  }
+}
+
+// Lấy danh sách centers mà user đã follow
+async function getUserFollowedCenters(req, res) {
+  try {
+    const { userId } = req.query;
+    const { page = 1, limit = 10 } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        error: "Thiếu tham số bắt buộc: userId"
+      });
+    }
+
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        error: "Người dùng không tồn tại"
+      });
+    }
+
+    const result = await Follow.findCentersByUserId(userId, {
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+
+    res.json({
+      message: "Lấy danh sách trung tâm đã follow thành công",
+      centers: result.data,
+      pagination: result.pagination
+    });
+
+  } catch (error) {
+    console.error("Get user followed centers error:", error);
+    res.status(500).json({
+      error: "Lỗi server khi lấy danh sách trung tâm đã follow"
     });
   }
 }

@@ -210,6 +210,62 @@ async function searchByUserId(userId, { page = 1, limit = 10, keyword, status, m
   };
 }
 
+// Lấy danh sách centers mà user đang follow với pagination
+async function findCentersByUserId(userId, { page = 1, limit = 10 }) {
+  // Parse to integers
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const offset = (page - 1) * limit;
+  
+  const [rows] = await db.query(
+    `SELECT 
+      f.id,
+      f.center_id AS centerId,
+      f.created_at AS followedAt,
+      c.name AS centerName,
+      c.logo_url AS centerLogo,
+      c.phone AS centerPhone,
+      c.address AS centerAddress,
+      c.website_url AS centerWebsite,
+      c.description AS centerDescription,
+      c.verified AS centerVerified,
+      c.status AS centerStatus,
+      u.name AS ownerName,
+      u.email AS ownerEmail
+    FROM follows f
+    LEFT JOIN centers c ON f.center_id = c.id
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE f.user_id = ? AND f.center_id IS NOT NULL AND c.is_deleted = 0
+    ORDER BY f.created_at DESC
+    LIMIT ? OFFSET ?`,
+    [userId, limit, offset]
+  );
+
+  // Đếm tổng số records
+  const [countRows] = await db.query(
+    `SELECT COUNT(*) as total 
+     FROM follows f 
+     LEFT JOIN centers c ON f.center_id = c.id 
+     WHERE f.user_id = ? AND f.center_id IS NOT NULL AND c.is_deleted = 0`,
+    [userId]
+  );
+
+  const total = countRows[0].total;
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    }
+  };
+}
+
 // Lấy danh sách user đang follow course với pagination
 async function findByCourseId(courseId, { page = 1, limit = 10 }) {
   const offset = (page - 1) * limit;
@@ -425,6 +481,7 @@ module.exports = {
   isFollowing,
   isFollowingCenter,
   findByUserId,
+  findCentersByUserId,
   searchByUserId,
   findByCourseId,
   findByCenterId,

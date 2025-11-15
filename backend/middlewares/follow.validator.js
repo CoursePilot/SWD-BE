@@ -96,6 +96,25 @@ const validateCheckFollowCenterQuery = [
     .withMessage('ID trung tâm phải là UUID hợp lệ')
 ];
 
+// Validation cho get user followed centers
+const validateUserCentersQuery = [
+  query('userId')
+    .notEmpty()
+    .withMessage('ID người dùng là bắt buộc')
+    .isUUID()
+    .withMessage('ID người dùng phải là UUID hợp lệ'),
+  
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Trang phải là số nguyên lớn hơn 0'),
+  
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Giới hạn phải là số nguyên từ 1 đến 100')
+];
+
 // Middleware xử lý lỗi validation
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -117,5 +136,6 @@ module.exports = {
   validateRecentFollowsQuery,
   validateCheckFollowQuery,
   validateCheckFollowCenterQuery,
+  validateUserCentersQuery,
   handleValidationErrors
 };

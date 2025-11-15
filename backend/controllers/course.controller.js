@@ -112,40 +112,7 @@ async function createCourse(req, res) {
 
     const course = await Course.findById(courseId);
 
-    // Gửi thông báo cho tất cả user đang follow trung tâm này
-    try {
-      const followerIds = await Follow.getUserIdsByCenter(centerId);
-      
-      if (followerIds.length > 0) {
-        // Tạo notification cho mỗi follower
-        const notificationPromises = followerIds.map(userId => {
-          return Notification.create({
-            userId,
-            centerId,
-            type: 'system',
-            payload: {
-              title: 'Khóa học mới',
-              message: `Khóa học mới của trung tâm "${center.name}": "${title}"`,
-              courseId,
-              centerId,
-              centerName: center.name,
-              courseTitle: title,
-              courseSummary: summary,
-              courseImage: imageUrl,
-              modality,
-              priceMin,
-              priceMax
-            }
-          });
-        });
-
-        await Promise.all(notificationPromises);
-        console.log(`Đã gửi thông báo đến ${followerIds.length} người theo dõi trung tâm cho khóa học mới: ${courseId}`);
-      }
-    } catch (notifError) {
-      // Log lỗi nhưng không làm fail request
-      console.error("Lỗi khi gửi thông báo:", notifError);
-    }
+    // NOTE: Notification sẽ được gửi khi course được approve, không phải khi tạo mới
 
     res.status(201).json({
       message: "Tạo khóa học thành công",
@@ -492,6 +459,44 @@ async function approveCourse(req, res) {
     // Không cần tăng thêm ở đây
 
     const updatedCourse = await Course.findById(courseId);
+
+    // Gửi thông báo cho tất cả user đang follow trung tâm này
+    try {
+      const center = await Center.findById(course.centerId);
+      if (center) {
+        const followerIds = await Follow.getUserIdsByCenter(course.centerId);
+        
+        if (followerIds.length > 0) {
+          // Tạo notification cho mỗi follower
+          const notificationPromises = followerIds.map(userId => {
+            return Notification.create({
+              userId,
+              centerId: course.centerId,
+              type: 'system',
+              payload: {
+                title: 'Khóa học mới được phê duyệt',
+                message: `Trung tâm "${center.name}" vừa ra mắt khóa học mới: "${course.title}"`,
+                courseId: course.id,
+                centerId: course.centerId,
+                centerName: center.name,
+                courseTitle: course.title,
+                courseSummary: course.summary,
+                courseImage: course.imageUrl,
+                modality: course.modality,
+                priceMin: course.priceMin,
+                priceMax: course.priceMax
+              }
+            });
+          });
+
+          await Promise.all(notificationPromises);
+          console.log(`Đã gửi thông báo đến ${followerIds.length} người theo dõi trung tâm cho khóa học được duyệt: ${courseId}`);
+        }
+      }
+    } catch (notifError) {
+      // Log lỗi nhưng không làm fail request
+      console.error("Lỗi khi gửi thông báo:", notifError);
+    }
 
     res.json({
       message: "Course đã được approve thành công",
