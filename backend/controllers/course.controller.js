@@ -462,14 +462,15 @@ async function approveCourse(req, res) {
 
     // Gửi thông báo cho tất cả user đang follow trung tâm này
     try {
+      const socketManager = require('../utils/socketManager');
       const center = await Center.findById(course.centerId);
       if (center) {
         const followerIds = await Follow.getUserIdsByCenter(course.centerId);
         
         if (followerIds.length > 0) {
           // Tạo notification cho mỗi follower
-          const notificationPromises = followerIds.map(userId => {
-            return Notification.create({
+          const notificationPromises = followerIds.map(async (userId) => {
+            const notificationId = await Notification.create({
               userId,
               centerId: course.centerId,
               type: 'system',
@@ -487,15 +488,28 @@ async function approveCourse(req, res) {
                 priceMax: course.priceMax
               }
             });
+
+            // 🔥 EMIT REAL-TIME NOTIFICATION VIA SOCKET.IO
+            const notification = await Notification.findById(notificationId);
+            if (notification) {
+              console.log(`📤 [approveCourse] Emitting notification to user ${userId}`);
+              socketManager.sendNotification(userId, notification);
+              
+              // Also send updated unread count
+              const unreadCount = await Notification.countUnread(userId, course.centerId);
+              socketManager.sendUnreadCount(userId, unreadCount);
+            }
+
+            return notificationId;
           });
 
           await Promise.all(notificationPromises);
-          console.log(`Đã gửi thông báo đến ${followerIds.length} người theo dõi trung tâm cho khóa học được duyệt: ${courseId}`);
+          console.log(`✅ Đã gửi thông báo đến ${followerIds.length} người theo dõi trung tâm cho khóa học được duyệt: ${courseId}`);
         }
       }
     } catch (notifError) {
       // Log lỗi nhưng không làm fail request
-      console.error("Lỗi khi gửi thông báo:", notifError);
+      console.error("❌ Lỗi khi gửi thông báo:", notifError);
     }
 
     res.json({
